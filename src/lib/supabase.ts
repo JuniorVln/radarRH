@@ -1,9 +1,64 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
+
+// Sem as envs configuradas, o createClient do supabase-js lança no import
+// ("supabaseUrl is required"), o que quebra toda a aplicação e gera tela branca.
+// Em vez disso, avisamos no console e exportamos um stub inerte para que a UI
+// continue renderizando (sem dados) e o erro fique visível ao desenvolvedor.
+function createStubClient(): SupabaseClient {
+  const missingEnvError = {
+    message:
+      'Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente (Vercel > Settings > Environment Variables).',
+  }
+
+  const emptyResult = { data: [] as unknown[], error: missingEnvError }
+  const singleResult = { data: null, error: missingEnvError }
+
+  const queryBuilder: any = {
+    select: () => queryBuilder,
+    insert: () => Promise.resolve(singleResult),
+    update: () => queryBuilder,
+    delete: () => queryBuilder,
+    upsert: () => Promise.resolve(singleResult),
+    eq: () => queryBuilder,
+    neq: () => queryBuilder,
+    in: () => queryBuilder,
+    order: () => queryBuilder,
+    limit: () => queryBuilder,
+    single: () => Promise.resolve(singleResult),
+    maybeSingle: () => Promise.resolve(singleResult),
+    then: (resolve: (v: typeof emptyResult) => unknown) => resolve(emptyResult),
+  }
+
+  return {
+    from: () => queryBuilder,
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    },
+    storage: {
+      from: () => ({
+        upload: () => Promise.resolve(singleResult),
+        getPublicUrl: () => ({ data: { publicUrl: '' } }),
+      }),
+    },
+  } as unknown as SupabaseClient
+}
+
+if (!isSupabaseConfigured) {
+  console.error(
+    '[Radar RH] Variáveis de ambiente do Supabase ausentes. ' +
+      'Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no Vercel e faça redeploy.'
+  )
+}
+
+export const supabase: SupabaseClient = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createStubClient()
 
 export type Database = {
   public: {
