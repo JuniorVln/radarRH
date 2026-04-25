@@ -153,12 +153,11 @@ export function RecrutamentoPage() {
 
   return (
     <Layout title="Recrutamento" subtitle="Gestão de candidatos, vagas e processos seletivos">
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard title="Vagas Abertas" value={String(stats.vagasAbertas)} icon={<Briefcase size={20} className="text-indigo-600" />} iconBg="bg-indigo-100" />
-        <StatCard title="Candidatos Ativos" value={String(stats.candidatosAtivos)} icon={<Users size={20} className="text-blue-600" />} iconBg="bg-blue-100" />
-        <StatCard title="Em Processo" value={String(stats.emProcesso)} icon={<UserPlus size={20} className="text-purple-600" />} iconBg="bg-purple-100" />
-        <StatCard title="Contratados (total)" value={String(stats.contratados)} icon={<Star size={20} className="text-green-600" />} iconBg="bg-green-100" />
+        <StatCard title="Vagas Abertas" value={loading ? <div className="h-8 w-12 skeleton" /> : String(stats.vagasAbertas)} icon={<Briefcase size={20} className="text-indigo-600" />} iconBg="bg-indigo-100" />
+        <StatCard title="Candidatos Ativos" value={loading ? <div className="h-8 w-12 skeleton" /> : String(stats.candidatosAtivos)} icon={<Users size={20} className="text-blue-600" />} iconBg="bg-blue-100" />
+        <StatCard title="Em Processo" value={loading ? <div className="h-8 w-12 skeleton" /> : String(stats.emProcesso)} icon={<UserPlus size={20} className="text-purple-600" />} iconBg="bg-purple-100" />
+        <StatCard title="Contratados (total)" value={loading ? <div className="h-8 w-12 skeleton" /> : String(stats.contratados)} icon={<Star size={20} className="text-green-600" />} iconBg="bg-green-100" />
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -180,62 +179,86 @@ export function RecrutamentoPage() {
           </div>
         </div>
 
-        {/* Kanban — Candidatos */}
         {tab === 'candidatos' && (
-          <div className="p-4">
-            <div className="mb-3 max-w-xs">
+          <div className="p-4 animate-fade-in">
+            <div className="mb-4 max-w-xs">
               <SearchInput value={search} onChange={setSearch} placeholder="Buscar candidato..." />
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-4">
-              {ETAPAS_KANBAN.map(etapa => {
-                const cards = candidatosFiltrados.filter(c => c.etapa_kanban === etapa.key)
-                return (
-                  <div key={etapa.key} className={`kanban-col flex-shrink-0 ${etapa.color}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-semibold text-gray-700">{etapa.label}</h4>
-                      <span className="badge badge-gray text-xs">{cards.length}</span>
-                    </div>
-                    <div className="space-y-2">
-                      {cards.length === 0 ? (
-                        <div className="text-center py-8 text-gray-400 text-xs">Nenhum candidato</div>
-                      ) : cards.map(c => (
-                        <div key={c.id} className="kanban-card">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Avatar name={c.nome} size="sm" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-800">{c.nome}</p>
-                              <p className="text-xs text-gray-400">{c.email}</p>
-                            </div>
-                          </div>
-                          {c.aderencia_vaga != null && (
-                            <div className="flex items-center gap-1 mb-2">
-                              <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-                                <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: `${c.aderencia_vaga}%` }} />
-                              </div>
-                              <span className="text-xs text-gray-500">{c.aderencia_vaga}%</span>
-                            </div>
-                          )}
-                          <select
-                            className="input text-xs py-1 mt-1"
-                            value={c.etapa_kanban}
-                            onChange={e => handleMoveCandidato(c.id, e.target.value)}
-                          >
-                            {ETAPAS_KANBAN.map(e => <option key={e.key} value={e.key}>{e.label}</option>)}
-                            <option value="reprovado">Reprovado</option>
-                          </select>
-                        </div>
-                      ))}
+            
+            {loading ? (
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {ETAPAS_KANBAN.map(etapa => (
+                  <div key={etapa.key} className="kanban-col flex-shrink-0 bg-gray-50 border border-gray-100">
+                    <div className="h-6 w-24 skeleton mb-4" />
+                    <div className="space-y-3">
+                      <div className="h-24 w-full skeleton" />
+                      <div className="h-24 w-full skeleton" />
                     </div>
                   </div>
-                )
-              })}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {ETAPAS_KANBAN.map(etapa => {
+                  const cards = candidatosFiltrados.filter(c => c.etapa_kanban === etapa.key)
+                  return (
+                    <div key={etapa.key} className={`kanban-col flex-shrink-0 ${etapa.color}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-gray-700">{etapa.label}</h4>
+                        <span className="badge badge-gray text-xs">{cards.length}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {cards.length === 0 ? (
+                          <div className="text-center py-8 text-gray-400 text-xs border-2 border-dashed border-gray-200/50 rounded-lg">
+                            Nenhum candidato
+                          </div>
+                        ) : cards.map(c => (
+                          <div key={c.id} className="kanban-card group">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Avatar name={c.nome} size="sm" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-800 line-clamp-1">{c.nome}</p>
+                                <p className="text-[10px] text-gray-400 line-clamp-1">{c.email}</p>
+                              </div>
+                            </div>
+                            {c.aderencia_vaga != null && (
+                              <div className="flex items-center gap-1 mb-2">
+                                <div className="flex-1 bg-gray-100 rounded-full h-1">
+                                  <div className="bg-indigo-500 h-1 rounded-full transition-all duration-1000" style={{ width: `${c.aderencia_vaga}%` }} />
+                                </div>
+                                <span className="text-[10px] text-gray-500">{c.aderencia_vaga}%</span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between mt-1">
+                              <select
+                                className="input text-[10px] py-0.5 px-1 h-6 w-24 bg-transparent border-gray-200"
+                                value={c.etapa_kanban}
+                                onChange={e => handleMoveCandidato(c.id, e.target.value)}
+                              >
+                                {ETAPAS_KANBAN.map(e => <option key={e.key} value={e.key}>{e.label}</option>)}
+                                <option value="reprovado">Reprovado</option>
+                              </select>
+                              <button onClick={() => {
+                                if(confirm('Excluir este candidato?')) {
+                                  supabase.from('candidatos').delete().eq('id', c.id).then(() => fetchAll())
+                                }
+                              }} className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 transition">
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Vagas */}
         {tab === 'vagas' && (
-          <div className="p-4">
+          <div className="p-4 animate-fade-in">
             {vagas.length === 0 ? (
               <EmptyState icon={<Briefcase size={32} />} title="Nenhuma vaga cadastrada" description="Cadastre vagas para iniciar o processo seletivo."
                 action={<button className="btn-primary" onClick={() => setShowNovaVaga(true)}><Plus size={16} />Nova Vaga</button>} />
@@ -266,9 +289,8 @@ export function RecrutamentoPage() {
           </div>
         )}
 
-        {/* Templates */}
         {tab === 'templates' && (
-          <div className="p-4">
+          <div className="p-4 animate-fade-in">
             {templates.length === 0 ? (
               <EmptyState icon={<Mail size={32} />} title="Nenhum template criado" description="Crie templates de e-mail para comunicar candidatos. Use variáveis como {{nome_candidato}}."
                 action={<button className="btn-primary" onClick={() => setShowNovoTemplate(true)}><Plus size={16} />Novo Template</button>} />
@@ -291,9 +313,8 @@ export function RecrutamentoPage() {
           </div>
         )}
 
-        {/* Banco de Talentos */}
         {tab === 'banco_talentos' && (
-          <div className="p-4">
+          <div className="p-4 animate-fade-in">
             <div className="mb-4">
               <SearchInput value={search} onChange={setSearch} placeholder="Buscar candidato no banco..." />
             </div>
@@ -316,7 +337,6 @@ export function RecrutamentoPage() {
         )}
       </div>
 
-      {/* Modal Nova Vaga */}
       <Modal open={showNovaVaga} onClose={() => setShowNovaVaga(false)} title="Nova Vaga" maxWidth="max-w-2xl">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
@@ -360,7 +380,6 @@ export function RecrutamentoPage() {
         </div>
       </Modal>
 
-      {/* Modal Novo Candidato */}
       <Modal open={showNovoCandidato} onClose={() => setShowNovoCandidato(false)} title="Novo Candidato">
         <div className="space-y-4">
           <div>
@@ -403,7 +422,6 @@ export function RecrutamentoPage() {
         </div>
       </Modal>
 
-      {/* Modal Template */}
       <Modal open={showNovoTemplate} onClose={() => setShowNovoTemplate(false)} title="Novo Template de Email">
         <div className="space-y-4">
           <div>
@@ -428,4 +446,3 @@ export function RecrutamentoPage() {
     </Layout>
   )
 }
-

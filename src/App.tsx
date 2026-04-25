@@ -1,5 +1,6 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 
 import { DashboardPage } from './pages/DashboardPage'
 import { ColaboradoresPage } from './pages/ColaboradoresPage'
@@ -20,6 +21,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 export default function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" />
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/colaboradores" element={<ColaboradoresPage />} />

@@ -174,4 +174,32 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-400;
   }
+
+  /* Shimmer Loading */
+  @keyframes shimmer {
+    0% { background-position: -468px 0; }
+    100% { background-position: 468px 0; }
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden bg-gray-200 rounded;
+  }
+
+  .skeleton::after {
+    @apply absolute inset-0;
+    content: "";
+    background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+    background-size: 468px 100%;
+    animation: shimmer 1.5s infinite linear;
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
 }
