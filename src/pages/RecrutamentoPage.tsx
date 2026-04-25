@@ -5,6 +5,7 @@ import { Badge, EmptyState, SearchInput, Tabs, Modal, Avatar } from '../componen
 import { StatCard } from '../components/ui/StatCard'
 import { supabase } from '../lib/supabase'
 import type { Candidato, Vaga } from '../lib/supabase'
+import { maskPhone } from '../lib/masks'
 import toast from 'react-hot-toast'
 
 type RecrutamentoTab = 'candidatos' | 'vagas' | 'templates' | 'banco_talentos'
@@ -78,6 +79,12 @@ export function RecrutamentoPage() {
 
   const handleSaveCandidato = async () => {
     if (!formCand.nome.trim()) { toast.error('Nome é obrigatório.'); return }
+    
+    if (formCand.email && !formCand.email.includes('@')) {
+      toast.error('E-mail inválido.');
+      return
+    }
+
     setSavingCand(true)
     const payload: any = {
       nome: formCand.nome,
@@ -120,12 +127,14 @@ export function RecrutamentoPage() {
   }
 
   const handleDeleteVaga = async (id: string) => {
+    if (!confirm('Excluir esta vaga permanentemente?')) return
     await supabase.from('vagas').delete().eq('id', id)
     toast.success('Vaga excluída.')
     fetchAll()
   }
 
   const handleDeleteTemplate = async (id: string) => {
+    if (!confirm('Excluir este template?')) return
     await supabase.from('email_templates').delete().eq('id', id)
     toast.success('Template excluído.')
     fetchAll()
@@ -365,7 +374,7 @@ export function RecrutamentoPage() {
             </div>
             <div>
               <label className="label">Telefone</label>
-              <input className="input" placeholder="(00) 00000-0000" value={formCand.telefone} onChange={e => setFormCand(p => ({ ...p, telefone: e.target.value }))} />
+              <input className="input" placeholder="(00) 00000-0000" value={formCand.telefone} onChange={e => setFormCand(p => ({ ...p, telefone: maskPhone(e.target.value) }))} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -419,3 +428,4 @@ export function RecrutamentoPage() {
     </Layout>
   )
 }
+

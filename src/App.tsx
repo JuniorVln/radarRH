@@ -14,6 +14,8 @@ import { ContCoinsPage } from './pages/ContCoinsPage'
 import { MuralRecadosPage } from './pages/MuralRecadosPage'
 import { FeedRHPage } from './pages/FeedRHPage'
 import { PerfilComportamentalPage } from './pages/PerfilComportamentalPage'
+import { ConfiguracoesPage } from './pages/ConfiguracoesPage'
+import { NotFoundPage } from './pages/NotFoundPage'
 
 export default function App() {
   return (
@@ -32,6 +34,8 @@ export default function App() {
         <Route path="/mural-recados" element={<MuralRecadosPage />} />
         <Route path="/feed-rh" element={<FeedRHPage />} />
         <Route path="/perfil-comportamental" element={<PerfilComportamentalPage />} />
+        <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

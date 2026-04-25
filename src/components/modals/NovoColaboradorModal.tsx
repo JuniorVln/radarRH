@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Modal } from '../ui'
 import { supabase } from '../../lib/supabase'
+import { maskCPF, maskPhone } from '../../lib/masks'
 import toast from 'react-hot-toast'
 
 interface Props {
@@ -24,19 +25,30 @@ export function NovoColaboradorModal({ open, onClose, onSaved }: Props) {
     setForm(p => ({ ...p, [field]: value }))
 
   const handleSave = async () => {
-    if (!form.nome.trim() || !form.cargo.trim() || !form.setor.trim()) {
-      toast.error('Preencha Nome, Cargo e Setor obrigatoriamente.')
+    if (!form.nome.trim() || !form.cargo.trim() || !form.setor.trim() || !form.cpf.trim()) {
+      toast.error('Preencha Nome, CPF, Cargo e Setor obrigatoriamente.')
       return
     }
+
+    if (form.cpf.length < 14) {
+      toast.error('CPF inválido.')
+      return
+    }
+
+    if (form.email && !form.email.includes('@')) {
+      toast.error('E-mail inválido.')
+      return
+    }
+
     setLoading(true)
     const payload: any = {
       nome: form.nome,
+      cpf: form.cpf,
       cargo: form.cargo,
       setor: form.setor,
       tipo: form.tipo,
       status: form.status,
     }
-    if (form.cpf) payload.cpf = form.cpf
     if (form.email) payload.email = form.email
     if (form.telefone) payload.telefone = form.telefone
     if (form.celula) payload.celula = form.celula
@@ -47,7 +59,8 @@ export function NovoColaboradorModal({ open, onClose, onSaved }: Props) {
     const { error } = await supabase.from('colaboradores').insert(payload)
     setLoading(false)
     if (error) {
-      toast.error('Erro ao salvar: ' + error.message)
+      if (error.code === '23505') toast.error('Este CPF já está cadastrado.')
+      else toast.error('Erro ao salvar: ' + error.message)
       return
     }
     toast.success('Colaborador cadastrado com sucesso!')
@@ -64,8 +77,8 @@ export function NovoColaboradorModal({ open, onClose, onSaved }: Props) {
           <input className="input" value={form.nome} onChange={e => set('nome', e.target.value)} placeholder="Nome do colaborador" />
         </div>
         <div>
-          <label className="label">CPF</label>
-          <input className="input" value={form.cpf} onChange={e => set('cpf', e.target.value)} placeholder="000.000.000-00" />
+          <label className="label">CPF *</label>
+          <input className="input" value={form.cpf} onChange={e => set('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" />
         </div>
         <div>
           <label className="label">Email</label>
@@ -73,7 +86,7 @@ export function NovoColaboradorModal({ open, onClose, onSaved }: Props) {
         </div>
         <div>
           <label className="label">Telefone</label>
-          <input className="input" value={form.telefone} onChange={e => set('telefone', e.target.value)} placeholder="(00) 00000-0000" />
+          <input className="input" value={form.telefone} onChange={e => set('telefone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
         </div>
         <div>
           <label className="label">Cargo *</label>
@@ -89,7 +102,7 @@ export function NovoColaboradorModal({ open, onClose, onSaved }: Props) {
         </div>
         <div>
           <label className="label">Tipo de Contrato</label>
-          <select className="input" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
+          <select className="input" value={form.tipo} onChange={e => set('tipo', e.target.value as any)}>
             <option value="CLT">CLT</option>
             <option value="Estagiário">Estagiário</option>
             <option value="Terceiro">Terceiro</option>
@@ -124,3 +137,4 @@ export function NovoColaboradorModal({ open, onClose, onSaved }: Props) {
     </Modal>
   )
 }
+
