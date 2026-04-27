@@ -13,10 +13,19 @@ interface Props {
 }
 
 const EMPTY = {
-  nome: '', cpf: '', email: '', telefone: '', cargo: '',
-  setor: '', celula: '', tipo: 'CLT' as const,
-  data_admissao: '', data_nascimento: '', perfil_disc: '' as any,
-  status: 'ativo' as const, salario: '' as string | number,
+  nome: '',
+  cpf: '',
+  email: '',
+  telefone: '',
+  cargo: '',
+  setor: '',
+  celula: '',
+  tipo: 'CLT' as 'CLT' | 'Estagiário' | 'Terceiro' | 'PJ',
+  data_admissao: '',
+  data_nascimento: '',
+  perfil_disc: '' as any,
+  status: 'ativo' as 'ativo' | 'inativo' | 'demitido',
+  salario: '' as string | number,
   foto_url: ''
 }
 
