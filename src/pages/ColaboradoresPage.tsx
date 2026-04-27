@@ -5,7 +5,7 @@ import { Badge, Modal, EmptyState, Avatar, SearchInput } from '../components/ui'
 import { DISC_COLORS, formatDate } from '../lib/utils'
 import type { Colaborador } from '../lib/supabase'
 import { supabase } from '../lib/supabase'
-import { NovoColaboradorModal } from '../components/modals/NovoColaboradorModal'
+import { ColaboradorModal } from '../components/modals/ColaboradorModal'
 import { NineBoxModal } from '../components/modals/NineBoxModal'
 import { AnaliseComportamentalModal } from '../components/modals/AnaliseComportamentalModal'
 import toast from 'react-hot-toast'
@@ -17,7 +17,8 @@ export function ColaboradoresPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('table')
-  const [showNovo, setShowNovo] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [selectedColaborador, setSelectedColaborador] = useState<Colaborador | null>(null)
   const [showNineBox, setShowNineBox] = useState(false)
   const [showAnalise, setShowAnalise] = useState(false)
   const [filterTipo, setFilterTipo] = useState('todos')
@@ -43,8 +44,23 @@ export function ColaboradoresPage() {
     setConfirmDelete(null)
   }
 
+  const handleEdit = (c: Colaborador) => {
+    setSelectedColaborador(c)
+    setShowModal(true)
+  }
+
+  const handleNew = () => {
+    setSelectedColaborador(null)
+    setShowModal(true)
+  }
+
   const filtered = colaboradores.filter(c => {
-    if (search && !c.nome.toLowerCase().includes(search.toLowerCase())) return false
+    const searchLower = search.toLowerCase()
+    if (search && !(
+      c.nome.toLowerCase().includes(searchLower) || 
+      c.email?.toLowerCase().includes(searchLower) ||
+      c.cargo.toLowerCase().includes(searchLower)
+    )) return false
     if (filterTipo !== 'todos' && c.tipo !== filterTipo) return false
     return true
   })
@@ -83,7 +99,7 @@ export function ColaboradoresPage() {
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-3 p-4 border-b border-gray-100">
             <div className="flex-1 min-w-48">
-              <SearchInput value={search} onChange={setSearch} placeholder="Buscar colaborador..." />
+              <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nome, email ou cargo..." />
             </div>
             <div className="flex items-center gap-2">
               <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)} className="input py-2 text-sm w-auto pr-8">
@@ -99,7 +115,7 @@ export function ColaboradoresPage() {
               <button className="btn-secondary" onClick={() => setShowAnalise(true)}>
                 <BarChart2 size={16} /> Análise DISC
               </button>
-              <button className="btn-primary" onClick={() => setShowNovo(true)}>
+              <button className="btn-primary" onClick={handleNew}>
                 <Plus size={16} /> Novo Colaborador
               </button>
             </div>
@@ -122,7 +138,7 @@ export function ColaboradoresPage() {
               title="Nenhum colaborador encontrado"
               description={search ? 'Tente ajustar o filtro.' : 'Adicione o primeiro colaborador clicando no botão acima.'}
               action={!search && (
-                <button className="btn-primary" onClick={() => setShowNovo(true)}>
+                <button className="btn-primary" onClick={handleNew}>
                   <Plus size={16} /> Novo Colaborador
                 </button>
               )}
@@ -130,15 +146,15 @@ export function ColaboradoresPage() {
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
               {filtered.map(c => (
-                <div key={c.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow text-center">
-                  <div className="flex justify-center mb-3"><Avatar name={c.nome} photo={c.foto_url} size="lg" /></div>
-                  <p className="font-semibold text-gray-900 text-sm">{c.nome}</p>
+                <div key={c.id} onClick={() => handleEdit(c)} className="cursor-pointer border border-gray-200 rounded-xl p-4 hover:shadow-md hover:border-indigo-200 transition-all text-center group">
+                  <div className="flex justify-center mb-3 group-hover:scale-105 transition-transform"><Avatar name={c.nome} photo={c.foto_url} size="lg" /></div>
+                  <p className="font-semibold text-gray-900 text-sm group-hover:text-indigo-600 transition-colors">{c.nome}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{c.cargo}</p>
                   <p className="text-xs text-gray-400">{c.setor}</p>
                   <div className="flex items-center justify-center gap-2 mt-3">
                     <Badge variant={c.tipo === 'CLT' ? 'blue' : c.tipo === 'Estagiário' ? 'purple' : 'yellow'}>{c.tipo}</Badge>
                     {c.perfil_disc && (
-                      <span className="w-6 h-6 rounded flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: DISC_COLORS[c.perfil_disc] }}>{c.perfil_disc}</span>
+                      <span className="w-6 h-6 rounded flex items-center justify-center text-white text-xs font-bold shadow-sm" style={{ backgroundColor: DISC_COLORS[c.perfil_disc] }}>{c.perfil_disc}</span>
                     )}
                   </div>
                 </div>
@@ -162,12 +178,12 @@ export function ColaboradoresPage() {
                 </thead>
                 <tbody>
                   {filtered.map(c => (
-                    <tr key={c.id}>
+                    <tr key={c.id} className="hover:bg-gray-50/80 transition-colors cursor-pointer group" onClick={() => handleEdit(c)}>
                       <td>
                         <div className="flex items-center gap-3">
                           <Avatar name={c.nome} photo={c.foto_url} size="sm" />
                           <div>
-                            <p className="font-medium text-gray-900">{c.nome}</p>
+                            <p className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">{c.nome}</p>
                             <p className="text-xs text-gray-400">{c.email}</p>
                           </div>
                         </div>
@@ -180,17 +196,22 @@ export function ColaboradoresPage() {
                       </td>
                       <td>
                         {c.perfil_disc ? (
-                          <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: DISC_COLORS[c.perfil_disc] }}>{c.perfil_disc}</span>
+                          <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm" style={{ backgroundColor: DISC_COLORS[c.perfil_disc] }}>{c.perfil_disc}</span>
                         ) : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="text-gray-500 text-sm">{formatDate(c.data_admissao)}</td>
                       <td>
                         <Badge variant={c.status === 'ativo' ? 'green' : 'red'}>{c.status}</Badge>
                       </td>
-                      <td>
-                        <button onClick={() => setConfirmDelete(c)} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition">
-                          <Trash2 size={15} />
-                        </button>
+                      <td onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleEdit(c)} className="text-gray-400 hover:text-indigo-600 p-1.5 rounded hover:bg-indigo-50 transition" title="Editar">
+                            <Pencil size={15} />
+                          </button>
+                          <button onClick={() => setConfirmDelete(c)} className="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition" title="Excluir">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -202,7 +223,13 @@ export function ColaboradoresPage() {
       </div>
 
       {/* Modais */}
-      <NovoColaboradorModal open={showNovo} onClose={() => setShowNovo(false)} onSaved={fetchColaboradores} />
+      <ColaboradorModal 
+        open={showModal} 
+        onClose={() => setShowModal(false)} 
+        onSaved={fetchColaboradores} 
+        colaborador={selectedColaborador}
+      />
+      
       <NineBoxModal open={showNineBox} onClose={() => setShowNineBox(false)} colaboradores={filtered} />
       <AnaliseComportamentalModal open={showAnalise} onClose={() => setShowAnalise(false)} colaboradores={filtered} />
 
