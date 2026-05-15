@@ -3,8 +3,8 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   Users, MessageSquare, UserPlus, TrendingDown, Calendar,
   Clock, BarChart2, Award, BookOpen, Bell, Rss,
-  ChevronRight, ChevronDown, LayoutDashboard, Settings, LogOut,
-  Target, Briefcase
+  LayoutDashboard, Settings, LogOut, AlertTriangle, FileText,
+  Target, Briefcase, WalletCards, PlugZap
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
@@ -58,6 +58,26 @@ const navItems: NavItem[] = [
     path: '/banco-de-horas',
   },
   {
+    label: 'Benefícios',
+    icon: <WalletCards size={18} />,
+    path: '/beneficios',
+  },
+  {
+    label: 'Cargos',
+    icon: <Briefcase size={18} />,
+    path: '/cargos',
+  },
+  {
+    label: 'Ocorrências',
+    icon: <AlertTriangle size={18} />,
+    path: '/ocorrencias',
+  },
+  {
+    label: 'Holerites',
+    icon: <FileText size={18} />,
+    path: '/holerites',
+  },
+  {
     label: 'Treinamentos',
     icon: <BookOpen size={18} />,
     path: '/treinamentos',
@@ -82,6 +102,11 @@ const navItems: NavItem[] = [
     icon: <BarChart2 size={18} />,
     path: '/perfil-comportamental',
   },
+  {
+    label: 'Integrações',
+    icon: <PlugZap size={18} />,
+    path: '/integracoes',
+  },
 ]
 
 export function Sidebar() {
@@ -95,8 +120,8 @@ export function Sidebar() {
           <Briefcase size={16} className="text-white" />
         </div>
         <div>
-          <h1 className="text-white font-bold text-sm leading-none">Radar</h1>
-          <p className="text-slate-400 text-xs mt-0.5">Gestão de Pessoas</p>
+          <h1 className="text-white font-bold text-sm leading-none">Rede Ideia</h1>
+          <p className="text-slate-400 text-xs mt-0.5">Recursos Humanos</p>
         </div>
       </div>
 

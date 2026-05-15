@@ -7,18 +7,18 @@ import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/utils'
 import toast from 'react-hot-toast'
 
-type PARType = 'PARE' | 'AVANCE' | 'REVEJA'
+type FeedbackType = 'PARE' | 'AVANCE' | 'REVEJA'
 
 const PAR_CONFIG = {
-  PARE: { label: 'O que precisa parar de fazer', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'red' as const },
-  AVANCE: { label: 'O que continuar e aprimorar', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', badge: 'green' as const },
-  REVEJA: { label: 'O que revisar e ajustar', bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', badge: 'yellow' as const },
+  AVANCE: { title: 'Positivo', label: 'Reconhecimento de comportamento ou entrega desejada', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', badge: 'green' as const },
+  REVEJA: { title: 'Neutro', label: 'Alinhamento, acompanhamento ou observação sem criticidade', bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', badge: 'yellow' as const },
+  PARE: { title: 'A Melhorar', label: 'Ponto de ajuste com expectativa clara de evolução', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'red' as const },
 }
 
 const EMPTY_FORM = {
   colaborador_nome: '',
   gestor_nome: '',
-  tipo_par: 'AVANCE' as PARType,
+  tipo_par: 'AVANCE' as FeedbackType,
   data_feedback: new Date().toISOString().split('T')[0],
   proximo_feedback: '',
   descricao: '',
@@ -103,7 +103,7 @@ export function FeedbackPage() {
   }
 
   return (
-    <Layout title="Painel do Feedback" subtitle="Metodologia PAR — Pare, Avance, Reveja">
+    <Layout title="Painel do Feedback" subtitle="Registros Positivo, Neutro e A Melhorar">
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard title="Feedbacks Registrados" value={String(stats.total)} icon={<MessageSquare size={20} className="text-indigo-600" />} iconBg="bg-indigo-100" />
@@ -112,11 +112,11 @@ export function FeedbackPage() {
         <StatCard title="Pendentes" value={String(stats.pendentes)} icon={<Clock size={20} className="text-yellow-600" />} iconBg="bg-yellow-100" />
       </div>
 
-      {/* Metodologia PAR */}
+      {/* Tipos de feedback */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        {(Object.entries(PAR_CONFIG) as [PARType, typeof PAR_CONFIG.PARE][]).map(([tipo, cfg]) => (
+        {(Object.entries(PAR_CONFIG) as [FeedbackType, typeof PAR_CONFIG.PARE][]).map(([tipo, cfg]) => (
           <div key={tipo} className={`rounded-xl p-4 border ${cfg.bg} ${cfg.border}`}>
-            <p className={`text-sm font-bold ${cfg.text}`}>{tipo}</p>
+            <p className={`text-sm font-bold ${cfg.text}`}>{cfg.title}</p>
             <p className="text-xs text-gray-500 mt-1">{cfg.label}</p>
           </div>
         ))}
@@ -135,7 +135,7 @@ export function FeedbackPage() {
         {loading ? (
           <div className="py-16 text-center text-gray-400">Carregando...</div>
         ) : filtered.length === 0 ? (
-          <EmptyState icon={<MessageSquare size={32} />} title="Nenhum feedback registrado" description="Registre o primeiro feedback utilizando a metodologia PAR."
+          <EmptyState icon={<MessageSquare size={32} />} title="Nenhum feedback registrado" description="Registre o primeiro feedback como Positivo, Neutro ou A Melhorar."
             action={<button className="btn-primary" onClick={() => setShowNovo(true)}><Plus size={16} />Registrar Feedback</button>} />
         ) : (
           <div className="overflow-x-auto">
@@ -143,7 +143,7 @@ export function FeedbackPage() {
               <thead>
                 <tr>
                   <th>Colaborador</th>
-                  <th>Tipo (PAR)</th>
+                  <th>Tipo</th>
                   <th>Data</th>
                   <th>Próximo Feedback</th>
                   <th>Descrição</th>
@@ -156,7 +156,7 @@ export function FeedbackPage() {
                   <tr key={f.id}>
                     <td className="font-medium text-gray-900">{f.gestor_nome || '—'}</td>
                     <td>
-                      <Badge variant={PAR_CONFIG[f.tipo_par as PARType]?.badge || 'gray'}>{f.tipo_par}</Badge>
+                      <Badge variant={PAR_CONFIG[f.tipo_par as FeedbackType]?.badge || 'gray'}>{PAR_CONFIG[f.tipo_par as FeedbackType]?.title || f.tipo_par}</Badge>
                     </td>
                     <td className="text-gray-500 text-sm">{formatDate(f.data_feedback)}</td>
                     <td className="text-gray-500 text-sm">{f.proximo_feedback ? formatDate(f.proximo_feedback) : '—'}</td>
@@ -178,7 +178,7 @@ export function FeedbackPage() {
       </div>
 
       {/* Modal */}
-      <Modal open={showNovo} onClose={() => setShowNovo(false)} title="Registrar Feedback PAR">
+      <Modal open={showNovo} onClose={() => setShowNovo(false)} title="Registrar Feedback">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -191,15 +191,15 @@ export function FeedbackPage() {
             </div>
           </div>
           <div>
-            <label className="label">Tipo (PAR)</label>
+            <label className="label">Tipo</label>
             <div className="grid grid-cols-3 gap-2">
-              {(Object.keys(PAR_CONFIG) as PARType[]).map(tipo => {
+              {(Object.keys(PAR_CONFIG) as FeedbackType[]).map(tipo => {
                 const cfg = PAR_CONFIG[tipo]
                 const isSelected = form.tipo_par === tipo
                 return (
                   <button key={tipo} className={`py-2 rounded-lg text-sm font-medium border transition-all ${isSelected ? `${cfg.bg} ${cfg.text} ${cfg.border} border-2` : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
                     onClick={() => setForm(p => ({ ...p, tipo_par: tipo }))}>
-                    {tipo}
+                    {cfg.title}
                   </button>
                 )
               })}

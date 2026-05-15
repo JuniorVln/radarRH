@@ -47,15 +47,24 @@ interface ModalProps {
   title: string
   children: React.ReactNode
   maxWidth?: string
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
-export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }: ModalProps) {
+const MODAL_SIZES = {
+  sm: 'max-w-md',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-5xl',
+}
+
+export function Modal({ open, onClose, title, children, maxWidth, size = 'md' }: ModalProps) {
   if (!open) return null
+  const widthClass = maxWidth || MODAL_SIZES[size]
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className={cn('modal-box', maxWidth)}
+        className={cn('modal-box', widthClass)}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -172,11 +181,12 @@ interface SearchInputProps {
   value: string
   onChange: (v: string) => void
   placeholder?: string
+  className?: string
 }
 
-export function SearchInput({ value, onChange, placeholder = 'Buscar...' }: SearchInputProps) {
+export function SearchInput({ value, onChange, placeholder = 'Buscar...', className }: SearchInputProps) {
   return (
-    <div className="relative">
+    <div className={cn('relative', className)}>
       <svg
         className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
         width="16" height="16" viewBox="0 0 24 24" fill="none"

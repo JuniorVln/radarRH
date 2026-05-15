@@ -1,18 +1,113 @@
 import React, { useState, useEffect } from 'react'
 import { Layout } from '../components/layout/Layout'
 import { Link } from 'react-router-dom'
-import { Users, MessageSquare, UserPlus, TrendingDown, Award, Clock, Target, BookOpen, Calendar } from 'lucide-react'
+import {
+  Users,
+  MessageSquare,
+  UserPlus,
+  TrendingDown,
+  Award,
+  Target,
+  BookOpen,
+  Calendar,
+  Cake,
+  BriefcaseBusiness,
+  AlertTriangle,
+  Plane,
+} from 'lucide-react'
 import { StatCard } from '../components/ui/StatCard'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { supabase } from '../lib/supabase'
+import { Badge } from '../components/ui'
+import { formatDate } from '../lib/utils'
+
+type TipoVinculo = 'CLT' | 'Estagiário' | 'Terceiro' | 'PJ' | 'Mensalista' | 'Horista'
+
+type ColaboradorDashboard = {
+  id: string
+  nome: string
+  tipo: TipoVinculo
+  status: string
+  perfil_disc: 'D' | 'I' | 'S' | 'C' | null
+  data_admissao: string | null
+  data_nascimento: string | null
+}
+
+type FeriasDashboard = {
+  id: string
+  colaborador_id: string
+  gozo_programado: string | null
+  dias: number | null
+  status: string | null
+}
+
+const TIPOS_VINCULO: { tipo: TipoVinculo; label: string; color: string }[] = [
+  { tipo: 'CLT', label: 'CLT', color: 'bg-blue-500' },
+  { tipo: 'Estagiário', label: 'Estagiário', color: 'bg-purple-500' },
+  { tipo: 'Terceiro', label: 'Terceiro', color: 'bg-yellow-500' },
+  { tipo: 'PJ', label: 'PJ', color: 'bg-orange-500' },
+  { tipo: 'Mensalista', label: 'Mensalista', color: 'bg-emerald-500' },
+  { tipo: 'Horista', label: 'Horista', color: 'bg-cyan-500' },
+]
+
+function parseLocalDate(date: string | null | undefined) {
+  if (!date) return null
+  const [year, month, day] = date.split('T')[0].split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day)
+}
+
+function daysBetweenDates(start: Date, end: Date) {
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime()
+  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime()
+  return Math.round((endDay - startDay) / 86400000)
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function sameMonth(date: Date | null, reference: Date) {
+  return Boolean(date && date.getMonth() === reference.getMonth())
+}
+
+function getFeriasColaboradorNome(item: FeriasDashboard, nomeMap: Record<string, string>) {
+  return nomeMap[item.colaborador_id] || 'Colaborador'
+}
 
 export function DashboardPage() {
   const [stats, setStats] = useState({
     total: 0,
-    clt: 0,
-    estagiarios: 0,
-    turnover: 0
+    turnover: 0,
+    aniversariantes: 0,
+    tempoMedioCasa: '0m',
+    experiencia: 0,
   })
+  const [vinculos, setVinculos] = useState<Record<TipoVinculo, number>>({
+    CLT: 0,
+    Estagiário: 0,
+    Terceiro: 0,
+    PJ: 0,
+    Mensalista: 0,
+    Horista: 0,
+  })
+  const [birthdays, setBirthdays] = useState<ColaboradorDashboard[]>([])
+  const [tenureHighlights, setTenureHighlights] = useState<{ nome: string; anos: number; meses: number }[]>([])
+  const [feriasResumo, setFeriasResumo] = useState({
+    saindo: [] as FeriasDashboard[],
+    emFerias: [] as FeriasDashboard[],
+    retornando: [] as FeriasDashboard[],
+  })
+  const [experienciaAlerts, setExperienciaAlerts] = useState<
+    { colaborador: ColaboradorDashboard; marco: number; data: string; dias: number }[]
+  >([])
+  const [colaboradorNomeMap, setColaboradorNomeMap] = useState<Record<string, string>>({})
   const [discDistribution, setDiscDistribution] = useState([
     { name: 'D', value: 0, color: '#EF4444' },
     { name: 'I', value: 0, color: '#F59E0B' },
@@ -25,54 +120,113 @@ export function DashboardPage() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      
-      // 1. Colaboradores Stats
-      const { data: cols } = await supabase.from('colaboradores').select('tipo, status, perfil_disc')
-      if (cols) {
-        const ativos = cols.filter(c => c.status === 'ativo')
-        setStats({
-          total: ativos.length,
-          clt: ativos.filter(c => c.tipo === 'CLT').length,
-          estagiarios: ativos.filter(c => c.tipo === 'Estagiário').length,
-          turnover: 2.5 // Exemplo estático por enquanto, ou calcular baseando em demissões/total
-        })
 
-        // 2. DISC Distribution
+      const { data: cols } = await supabase
+        .from('colaboradores')
+        .select('id, nome, tipo, status, perfil_disc, data_admissao, data_nascimento')
+
+      if (cols) {
+        const ativos = (cols as ColaboradorDashboard[]).filter(c => c.status === 'ativo')
+        const today = new Date()
+
+        const vinculoCounts = TIPOS_VINCULO.reduce((acc, item) => {
+          acc[item.tipo] = ativos.filter(c => c.tipo === item.tipo).length
+          return acc
+        }, {} as Record<TipoVinculo, number>)
+
+        const aniversariantesMes = ativos
+          .filter(c => sameMonth(parseLocalDate(c.data_nascimento), today))
+          .sort((a, b) => (parseLocalDate(a.data_nascimento)?.getDate() || 0) - (parseLocalDate(b.data_nascimento)?.getDate() || 0))
+
+        const admissionDates = ativos.map(c => parseLocalDate(c.data_admissao)).filter(Boolean) as Date[]
+        const totalMonths = admissionDates.reduce((sum, date) => {
+          const days = Math.max(0, daysBetweenDates(date, today))
+          return sum + Math.floor(days / 30.4375)
+        }, 0)
+        const avgMonths = admissionDates.length ? Math.round(totalMonths / admissionDates.length) : 0
+
+        const highlights = ativos
+          .map(c => {
+            const admission = parseLocalDate(c.data_admissao)
+            const months = admission ? Math.floor(Math.max(0, daysBetweenDates(admission, today)) / 30.4375) : 0
+            return { nome: c.nome, anos: Math.floor(months / 12), meses: months % 12 }
+          })
+          .filter(item => item.anos > 0 || item.meses > 0)
+          .sort((a, b) => (b.anos * 12 + b.meses) - (a.anos * 12 + a.meses))
+          .slice(0, 5)
+
+        const experiencia = ativos.flatMap(colaborador => {
+          const admissao = parseLocalDate(colaborador.data_admissao)
+          if (!admissao) return []
+          return [30, 60, 90]
+            .map(marco => {
+              const milestone = addDays(admissao, marco)
+              const dias = daysBetweenDates(today, milestone)
+              return {
+                colaborador,
+                marco,
+                data: milestone.toISOString().split('T')[0],
+                dias,
+              }
+            })
+            .filter(alerta => alerta.dias >= -7 && alerta.dias <= 15)
+        }).sort((a, b) => a.dias - b.dias)
+
+        setVinculos(vinculoCounts)
+        setBirthdays(aniversariantesMes.slice(0, 6))
+        setTenureHighlights(highlights)
+        setExperienciaAlerts(experiencia.slice(0, 6))
+        setStats(prev => ({
+          ...prev,
+          total: ativos.length,
+          aniversariantes: aniversariantesMes.length,
+          tempoMedioCasa: avgMonths >= 12 ? `${Math.floor(avgMonths / 12)}a ${avgMonths % 12}m` : `${avgMonths}m`,
+          experiencia: experiencia.length,
+        }))
+
         const discCounts: any = { D: 0, I: 0, S: 0, C: 0 }
         ativos.forEach(c => {
           if (c.perfil_disc) discCounts[c.perfil_disc]++
         })
         const totalWithDisc = Object.values(discCounts).reduce((a: any, b: any) => a + b, 0) as number
-        
+
         setDiscDistribution(prev => prev.map(item => ({
           ...item,
-          value: totalWithDisc > 0 ? Math.round((discCounts[item.name] / totalWithDisc) * 100) : 0
+          value: totalWithDisc > 0 ? Math.round((discCounts[item.name] / totalWithDisc) * 100) : 0,
         })))
+
+        const nomeMap: Record<string, string> = {}
+        ;(cols as ColaboradorDashboard[]).forEach(c => { nomeMap[c.id] = c.nome })
+        setColaboradorNomeMap(nomeMap)
       }
 
-      // 3. Movimentações (Chart)
       const { data: movs } = await supabase.from('movimentacoes').select('tipo, data').order('data', { ascending: true })
       if (movs) {
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
         const currentYear = new Date().getFullYear()
-        
-        // Agrupar por mês do ano atual
         const grouped = months.map((m, i) => {
           const monthMovs = movs.filter(mov => {
-            const date = new Date(mov.data)
-            return date.getMonth() === i && date.getFullYear() === currentYear
+            const date = parseLocalDate(mov.data)
+            return date?.getMonth() === i && date.getFullYear() === currentYear
           })
           return {
             mes: m,
             admissoes: monthMovs.filter(mov => mov.tipo === 'admissao').length,
-            demissoes: monthMovs.filter(mov => mov.tipo === 'demissao').length
+            demissoes: monthMovs.filter(mov => mov.tipo === 'demissao').length,
           }
         })
-        
-        // Pegar apenas os últimos 6 meses que tenham dados ou os últimos 6 meses cronológicos
+
         setChartData(grouped.slice(-6))
+        const twelveMonthsAgo = addDays(new Date(), -365)
+        const demissoes12m = movs.filter(mov => {
+          const date = parseLocalDate(mov.data)
+          return mov.tipo === 'demissao' && date && date >= twelveMonthsAgo
+        }).length
+        setStats(prev => ({
+          ...prev,
+          turnover: prev.total > 0 ? Number(((demissoes12m / prev.total) * 100).toFixed(1)) : 0,
+        }))
       } else {
-        // Fallback para dados vazios mas estruturados
         setChartData([
           { mes: 'Jan', admissoes: 0, demissoes: 0 },
           { mes: 'Fev', admissoes: 0, demissoes: 0 },
@@ -81,6 +235,37 @@ export function DashboardPage() {
           { mes: 'Mai', admissoes: 0, demissoes: 0 },
           { mes: 'Jun', admissoes: 0, demissoes: 0 },
         ])
+      }
+
+      const { data: ferias } = await supabase
+        .from('ferias')
+        .select('id, colaborador_id, gozo_programado, dias, status')
+
+      if (ferias) {
+        const today = startOfLocalDay(new Date())
+        const next15 = addDays(today, 15)
+        const resumo = {
+          saindo: [] as FeriasDashboard[],
+          emFerias: [] as FeriasDashboard[],
+          retornando: [] as FeriasDashboard[],
+        }
+
+        ;(ferias as FeriasDashboard[]).forEach(item => {
+          const start = parseLocalDate(item.gozo_programado)
+          if (!start || item.status === 'gozada') return
+          const end = addDays(start, Math.max(1, item.dias || 30) - 1)
+          const returnDate = addDays(end, 1)
+
+          if (start >= today && start <= next15) resumo.saindo.push(item)
+          if (start <= today && end >= today) resumo.emFerias.push(item)
+          if (returnDate >= today && returnDate <= next15) resumo.retornando.push(item)
+        })
+
+        setFeriasResumo({
+          saindo: resumo.saindo.slice(0, 5),
+          emFerias: resumo.emFerias.slice(0, 5),
+          retornando: resumo.retornando.slice(0, 5),
+        })
       }
 
       setLoading(false)
@@ -103,7 +288,6 @@ export function DashboardPage() {
   return (
     <Layout title="Dashboard" subtitle="Visão geral da gestão de pessoas">
       <div className="animate-fade-in">
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <StatCard
             title="Colaboradores Ativos"
@@ -113,16 +297,18 @@ export function DashboardPage() {
             subtitle="Total na empresa"
           />
           <StatCard
-            title="CLT"
-            value={loading ? <div className="h-8 w-12 skeleton" /> : String(stats.clt)}
-            icon={<Users size={20} className="text-blue-600" />}
-            iconBg="bg-blue-100"
+            title="Aniversariantes"
+            value={loading ? <div className="h-8 w-12 skeleton" /> : String(stats.aniversariantes)}
+            icon={<Cake size={20} className="text-pink-600" />}
+            iconBg="bg-pink-100"
+            subtitle="Mês atual"
           />
           <StatCard
-            title="Estagiários"
-            value={loading ? <div className="h-8 w-12 skeleton" /> : String(stats.estagiarios)}
-            icon={<Users size={20} className="text-purple-600" />}
-            iconBg="bg-purple-100"
+            title="Tempo Médio"
+            value={loading ? <div className="h-8 w-12 skeleton" /> : stats.tempoMedioCasa}
+            icon={<BriefcaseBusiness size={20} className="text-emerald-600" />}
+            iconBg="bg-emerald-100"
+            subtitle="Casa"
           />
           <StatCard
             title="Turnover"
@@ -133,8 +319,19 @@ export function DashboardPage() {
           />
         </div>
 
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+          {TIPOS_VINCULO.map(item => (
+            <div key={item.tipo} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className={`w-8 h-1.5 rounded-full ${item.color} mb-3`} />
+              <p className="text-xs font-medium text-gray-500">{item.label}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {loading ? <span className="inline-block h-7 w-8 skeleton" /> : vinculos[item.tipo]}
+              </p>
+            </div>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Admissões x Demissões */}
           <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="font-semibold text-gray-900 mb-4">Admissões x Demissões</h3>
             {loading ? (
@@ -152,7 +349,6 @@ export function DashboardPage() {
             )}
           </div>
 
-          {/* Perfil DISC */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="font-semibold text-gray-900 mb-4">Distribuição DISC</h3>
             <div className="space-y-3 mt-2">
@@ -182,7 +378,101 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Cake size={18} className="text-pink-600" />
+              <h3 className="font-semibold text-gray-900">Aniversários do Mês</h3>
+            </div>
+            {loading ? <div className="h-32 skeleton" /> : birthdays.length === 0 ? (
+              <p className="text-sm text-gray-400">Nenhum aniversariante no mês atual.</p>
+            ) : (
+              <div className="space-y-3">
+                {birthdays.map(c => (
+                  <div key={c.id} className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-gray-700 truncate">{c.nome}</span>
+                    <Badge variant="indigo" size="sm">{formatDate(c.data_nascimento)}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <BriefcaseBusiness size={18} className="text-emerald-600" />
+              <h3 className="font-semibold text-gray-900">Tempo de Casa</h3>
+            </div>
+            {loading ? <div className="h-32 skeleton" /> : tenureHighlights.length === 0 ? (
+              <p className="text-sm text-gray-400">Sem admissões cadastradas para calcular tempo de casa.</p>
+            ) : (
+              <div className="space-y-3">
+                {tenureHighlights.map(item => (
+                  <div key={item.nome} className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-gray-700 truncate">{item.nome}</span>
+                    <span className="text-xs text-gray-500">{item.anos}a {item.meses}m</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle size={18} className="text-amber-600" />
+              <h3 className="font-semibold text-gray-900">Experiência 30/60/90</h3>
+            </div>
+            {loading ? <div className="h-32 skeleton" /> : experienciaAlerts.length === 0 ? (
+              <p className="text-sm text-gray-400">Nenhum alerta contratual nos próximos 15 dias.</p>
+            ) : (
+              <div className="space-y-3">
+                {experienciaAlerts.map(alerta => (
+                  <div key={`${alerta.colaborador.id}-${alerta.marco}`} className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-700 truncate">{alerta.colaborador.nome}</p>
+                      <p className="text-xs text-gray-400">{formatDate(alerta.data)}</p>
+                    </div>
+                    <Badge variant={alerta.dias < 0 ? 'red' : 'yellow'} size="sm">{alerta.marco} dias</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Plane size={18} className="text-orange-600" />
+            <h3 className="font-semibold text-gray-900">Resumo de Férias</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { title: 'Saindo', items: feriasResumo.saindo, variant: 'blue' as const },
+              { title: 'Em férias', items: feriasResumo.emFerias, variant: 'green' as const },
+              { title: 'Retornando', items: feriasResumo.retornando, variant: 'orange' as const },
+            ].map(group => (
+              <div key={group.title} className="rounded-lg border border-gray-100 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-gray-800">{group.title}</p>
+                  <Badge variant={group.variant} size="sm">{group.items.length}</Badge>
+                </div>
+                {loading ? <div className="h-20 skeleton" /> : group.items.length === 0 ? (
+                  <p className="text-xs text-gray-400">Nenhum registro na janela de 15 dias.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {group.items.map(item => (
+                      <div key={item.id} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="font-medium text-gray-700 truncate">{getFeriasColaboradorNome(item, colaboradorNomeMap)}</span>
+                        <span className="text-xs text-gray-400">{formatDate(item.gozo_programado)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="font-semibold text-gray-900 mb-4">Acesso Rápido</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -204,4 +494,3 @@ export function DashboardPage() {
     </Layout>
   )
 }
-

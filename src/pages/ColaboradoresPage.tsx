@@ -68,8 +68,8 @@ export function ColaboradoresPage() {
   const totals = {
     total: colaboradores.filter(c => c.status === 'ativo').length,
     clt: colaboradores.filter(c => c.tipo === 'CLT').length,
-    estagiario: colaboradores.filter(c => c.tipo === 'Estagiário').length,
-    terceiro: colaboradores.filter(c => c.tipo === 'Terceiro' || c.tipo === 'PJ').length,
+    mensalista: colaboradores.filter(c => c.tipo === 'Mensalista').length,
+    horista: colaboradores.filter(c => c.tipo === 'Horista').length,
   }
 
   return (
@@ -86,29 +86,38 @@ export function ColaboradoresPage() {
             {loading ? <div className="h-9 w-12 skeleton mt-1" /> : <p className="text-3xl font-bold text-blue-600 mt-1">{totals.clt}</p>}
           </div>
           <div className="stat-card">
-            <p className="text-sm text-gray-500">Estagiários</p>
-            {loading ? <div className="h-9 w-12 skeleton mt-1" /> : <p className="text-3xl font-bold text-purple-600 mt-1">{totals.estagiario}</p>}
+            <p className="text-sm text-gray-500">Mensalistas</p>
+            {loading ? <div className="h-9 w-12 skeleton mt-1" /> : <p className="text-3xl font-bold text-purple-600 mt-1">{totals.mensalista}</p>}
           </div>
           <div className="stat-card">
-            <p className="text-sm text-gray-500">Terceiros / PJ</p>
-            {loading ? <div className="h-9 w-12 skeleton mt-1" /> : <p className="text-3xl font-bold text-yellow-600 mt-1">{totals.terceiro}</p>}
+            <p className="text-sm text-gray-500">Horistas</p>
+            {loading ? <div className="h-9 w-12 skeleton mt-1" /> : <p className="text-3xl font-bold text-yellow-600 mt-1">{totals.horista}</p>}
           </div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-3 p-4 border-b border-gray-100">
-            <div className="flex-1 min-w-48">
-              <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nome, email ou cargo..." />
-            </div>
+            <SearchInput 
+              value={search} 
+              onChange={setSearch} 
+              placeholder="Buscar por nome, email ou cargo..." 
+              className="flex-1 min-w-[200px] max-w-md"
+            />
+            <select
+              className="input-field max-w-[170px]"
+              value={filterTipo}
+              onChange={e => setFilterTipo(e.target.value)}
+            >
+              <option value="todos">Todos os tipos</option>
+              <option value="CLT">CLT</option>
+              <option value="Estagiário">Estagiário</option>
+              <option value="PJ">PJ</option>
+              <option value="Terceiro">Terceiro</option>
+              <option value="Mensalista">Mensalista</option>
+              <option value="Horista">Horista</option>
+            </select>
             <div className="flex items-center gap-2">
-              <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)} className="input py-2 text-sm w-auto pr-8">
-                <option value="todos">Todos os tipos</option>
-                <option value="CLT">CLT</option>
-                <option value="Estagiário">Estagiário</option>
-                <option value="Terceiro">Terceiro</option>
-                <option value="PJ">PJ</option>
-              </select>
               <button className="btn-secondary" onClick={() => setShowNineBox(true)}>
                 <Grid size={16} /> Nine Box
               </button>

@@ -56,6 +56,7 @@
   .badge-red { @apply bg-red-100 text-red-700; }
   .badge-gray { @apply bg-gray-100 text-gray-700; }
   .badge-orange { @apply bg-orange-100 text-orange-700; }
+  .badge-indigo { @apply bg-indigo-100 text-indigo-700; }
 
   /* Table */
   .data-table {
@@ -98,6 +99,10 @@
   /* Inputs */
   .input {
     @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all;
+  }
+
+  .input-field {
+    @apply input;
   }
 
   .label {
