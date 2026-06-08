@@ -164,7 +164,7 @@ export function CargosPage() {
       </div>
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Novo Cargo" maxWidth="max-w-3xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="label">Título *</label>
             <input className="input" value={form.titulo} onChange={e => setForm(p => ({ ...p, titulo: e.target.value }))} placeholder="Ex: Analista de RH" />
@@ -201,18 +201,18 @@ export function CargosPage() {
           </div>
           <div className="md:col-span-2">
             <label className="label">Descrição</label>
-            <textarea className="input h-20 resize-none" value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
+            <textarea className="input h-16 resize-none" value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
           </div>
           <div className="md:col-span-2">
             <label className="label">Atribuições</label>
-            <textarea className="input h-24 resize-none" value={form.atribuicoes} onChange={e => setForm(p => ({ ...p, atribuicoes: e.target.value }))} />
+            <textarea className="input h-20 resize-none" value={form.atribuicoes} onChange={e => setForm(p => ({ ...p, atribuicoes: e.target.value }))} />
           </div>
           <div className="md:col-span-2">
             <label className="label">Requisitos</label>
-            <textarea className="input h-24 resize-none" value={form.requisitos} onChange={e => setForm(p => ({ ...p, requisitos: e.target.value }))} />
+            <textarea className="input h-20 resize-none" value={form.requisitos} onChange={e => setForm(p => ({ ...p, requisitos: e.target.value }))} />
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-gray-100">
+        <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-gray-100">
           <button className="btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
           <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Salvando...' : 'Salvar Cargo'}</button>
         </div>

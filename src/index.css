@@ -128,11 +128,11 @@
 
   /* Modal */
   .modal-overlay {
-    @apply fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in;
+    @apply fixed inset-0 bg-black/50 z-50 flex items-start justify-center overflow-y-auto p-4 animate-fade-in sm:items-center;
   }
   
   .modal-box {
-    @apply bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl animate-fade-in;
+    @apply my-auto w-full max-h-[calc(100vh-2rem)] max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl animate-fade-in;
   }
 
   /* Page Layout */
