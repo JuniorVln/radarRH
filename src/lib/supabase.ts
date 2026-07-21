@@ -240,9 +240,9 @@ export interface Candidato {
 
 export interface TesteTecnico {
   id: string
-  titulo: string
-  descricao: string
-  link_externo: string | null
+  nome: string
+  descricao: string | null
+  vaga_id: string | null
   area: string | null
   tempo_estimado_minutos: number | null
   pontuacao_maxima: number | null
@@ -262,7 +262,9 @@ export interface CandidatoTeste {
   status: 'pendente' | 'enviado' | 'concluido' | 'avaliado'
   resultado_score: number | null
   observacoes: string | null
-  concluido_em: string | null
+  nota: number | null
+  anexo_url: string | null
+  data_realizacao: string | null
   criado_em: string
 }
 
@@ -280,10 +282,21 @@ export interface PDI {
   colaborador_id: string
   titulo: string
   descricao: string | null
-  objetivo: string
+  // A coluna "objetivo" não existe no banco; o objetivo fica em metas.objetivo
+  metas: { objetivo?: string } | null
   data_inicio: string
   data_fim: string | null
   status: 'planejado' | 'em_andamento' | 'concluido' | 'suspenso'
+  criado_em: string
+}
+
+export interface Movimentacao {
+  id: string
+  colaborador_id: string | null
+  tipo: 'admissao' | 'demissao' | 'ferias' | 'ajuste_salarial' | 'promocao'
+  data: string
+  descricao: string | null
+  valor: number | null
   criado_em: string
 }
 

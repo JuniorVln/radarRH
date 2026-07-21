@@ -14,6 +14,24 @@ export function MuralRecadosPage() {
   const [showNovo, setShowNovo] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ ...EMPTY })
+  const [editing, setEditing] = useState<any | null>(null)
+
+  const openNovo = () => {
+    setEditing(null)
+    setForm({ ...EMPTY })
+    setShowNovo(true)
+  }
+
+  const openEdit = (r: any) => {
+    setEditing(r)
+    setForm({
+      titulo: r.titulo || '',
+      conteudo: r.conteudo || '',
+      autor_nome: r.autor_nome || '',
+      data_expiracao: r.data_expiracao || '',
+    })
+    setShowNovo(true)
+  }
 
   const fetchRecados = useCallback(async () => {
     setLoading(true)
@@ -37,14 +55,17 @@ export function MuralRecadosPage() {
     const payload: any = {
       titulo: form.titulo,
       conteudo: form.conteudo,
+      autor_nome: form.autor_nome || null,
+      data_expiracao: form.data_expiracao || null,
     }
-    if (form.autor_nome) payload.autor_nome = form.autor_nome
-    if (form.data_expiracao) payload.data_expiracao = form.data_expiracao
 
-    const { error } = await supabase.from('recados').insert(payload)
+    const { error } = editing
+      ? await supabase.from('recados').update(payload).eq('id', editing.id)
+      : await supabase.from('recados').insert(payload)
     setSaving(false)
     if (error) { toast.error('Erro ao publicar: ' + error.message); return }
-    toast.success('Recado publicado!')
+    toast.success(editing ? 'Recado atualizado!' : 'Recado publicado!')
+    setEditing(null)
     setForm({ ...EMPTY })
     setShowNovo(false)
     fetchRecados()
@@ -62,7 +83,7 @@ export function MuralRecadosPage() {
     <Layout title="Mural de Recados" subtitle="Comunicados e recados para a equipe">
       <div className="flex items-center justify-between mb-6">
         <div />
-        <button className="btn-primary" onClick={() => setShowNovo(true)}>
+        <button className="btn-primary" onClick={openNovo}>
           <Plus size={16} /> Novo Recado
         </button>
       </div>
@@ -73,7 +94,7 @@ export function MuralRecadosPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="col-span-full">
             <EmptyState icon={<Bell size={32} />} title="Mural vazio" description="Publique recados e comunicados para toda a equipe aqui."
-              action={<button className="btn-primary" onClick={() => setShowNovo(true)}><Plus size={16} />Novo Recado</button>} />
+              action={<button className="btn-primary" onClick={openNovo}><Plus size={16} />Novo Recado</button>} />
           </div>
         </div>
       ) : (
@@ -81,8 +102,8 @@ export function MuralRecadosPage() {
           {recados.map(r => {
             const expired = r.data_expiracao && r.data_expiracao < hoje
             return (
-              <div key={r.id} className={`bg-white border rounded-xl p-5 shadow-sm relative ${expired ? 'opacity-60' : ''}`}>
-                <button onClick={() => handleDelete(r.id)} className="absolute top-3 right-3 text-gray-300 hover:text-red-500 transition">
+              <div key={r.id} onClick={() => openEdit(r)} className={`bg-white border rounded-xl p-5 shadow-sm relative cursor-pointer hover:border-indigo-200 transition ${expired ? 'opacity-60' : ''}`}>
+                <button onClick={e => { e.stopPropagation(); handleDelete(r.id) }} className="absolute top-3 right-3 text-gray-300 hover:text-red-500 transition">
                   <X size={16} />
                 </button>
                 {expired && <div className="mb-2"><Badge variant="red">Expirado</Badge></div>}
@@ -101,7 +122,7 @@ export function MuralRecadosPage() {
         </div>
       )}
 
-      <Modal open={showNovo} onClose={() => setShowNovo(false)} title="Novo Recado">
+      <Modal open={showNovo} onClose={() => setShowNovo(false)} title={editing ? 'Editar Recado' : 'Novo Recado'}>
         <div className="space-y-4">
           <div>
             <label className="label">Título *</label>
@@ -123,7 +144,7 @@ export function MuralRecadosPage() {
         </div>
         <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-gray-100">
           <button className="btn-secondary" onClick={() => setShowNovo(false)}>Cancelar</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Publicando...' : 'Publicar'}</button>
+          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Publicando...' : editing ? 'Salvar Alterações' : 'Publicar'}</button>
         </div>
       </Modal>
     </Layout>

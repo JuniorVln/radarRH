@@ -25,7 +25,8 @@ const EMPTY_PDI = {
   descricao: '',
   data_inicio: '',
   data_fim: '',
-  status: 'planejado' as const,
+  // A constraint do banco só aceita em_andamento/concluido/suspenso
+  status: 'em_andamento' as 'em_andamento' | 'concluido' | 'suspenso',
 }
 
 const NIVEIS = [
@@ -42,7 +43,6 @@ const STATUS_AVALIACAO = [
 ] as const
 
 const STATUS_PDI = [
-  { value: 'planejado', label: 'Planejado' },
   { value: 'em_andamento', label: 'Em andamento' },
   { value: 'concluido', label: 'Concluído' },
   { value: 'suspenso', label: 'Suspenso' },
@@ -86,22 +86,32 @@ export function AvaliacaoDesempenhoPage() {
 
   const fetchData = async () => {
     setLoading(true)
-    const [colsRes, pdiRes] = await Promise.all([
-      supabase.from('colaboradores').select('*, avaliacoes(*)').eq('status', 'ativo').order('nome'),
-      supabase.from('pdis').select('*, colaborador:colaboradores(nome,cargo,setor)').order('criado_em', { ascending: false }),
+    // O banco em produção não tem as FKs necessárias para o join embutido do
+    // PostgREST (colaboradores→avaliacoes/pdis); o vínculo é feito aqui no cliente.
+    const [colsRes, avalRes, pdiRes] = await Promise.all([
+      supabase.from('colaboradores').select('*').eq('status', 'ativo').order('nome'),
+      supabase.from('avaliacoes').select('*'),
+      supabase.from('pdis').select('*').order('criado_em', { ascending: false }),
     ])
 
-    if (colsRes.data) {
-      const processed = (colsRes.data as any[]).map((c) => {
-        const avaliacoes = [...(c.avaliacoes || [])].sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))
-        return {
-          ...c,
-          avaliacao: avaliacoes[0] || null,
-        }
-      })
-      setColaboradores(processed)
-    }
-    if (pdiRes.data) setPdis(pdiRes.data as PDIComColaborador[])
+    if (colsRes.error) toast.error('Erro ao carregar colaboradores: ' + colsRes.error.message)
+
+    const cols = (colsRes.data || []) as Colaborador[]
+    const avaliacoesAll = (avalRes.data || []) as Avaliacao[]
+
+    const processed: ColaboradorComAvaliacao[] = cols.map(c => {
+      const doColaborador = avaliacoesAll
+        .filter(a => a.colaborador_id === c.id)
+        .sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)))
+      return { ...c, avaliacao: doColaborador[0] || null }
+    })
+    setColaboradores(processed)
+
+    const pdisComColaborador: PDIComColaborador[] = ((pdiRes.data || []) as PDI[]).map(p => {
+      const c = cols.find(c => c.id === p.colaborador_id)
+      return { ...p, colaborador: c ? { nome: c.nome, cargo: c.cargo, setor: c.setor } : undefined }
+    })
+    setPdis(pdisComColaborador)
     setLoading(false)
   }
 
@@ -188,10 +198,11 @@ export function AvaliacaoDesempenhoPage() {
     }
 
     setSavingPDI(true)
+    // A tabela pdis não tem coluna "objetivo"; ele é guardado em metas (jsonb).
     const { error } = await supabase.from('pdis').insert({
       colaborador_id: formPDI.colaborador_id,
       titulo: formPDI.titulo.trim(),
-      objetivo: formPDI.objetivo.trim(),
+      metas: { objetivo: formPDI.objetivo.trim() },
       descricao: formPDI.descricao || null,
       data_inicio: formPDI.data_inicio,
       data_fim: formPDI.data_fim || null,
@@ -383,7 +394,7 @@ export function AvaliacaoDesempenhoPage() {
                         </div>
                         <Badge variant={statusVariant(p.status)}>{STATUS_PDI.find(s => s.value === p.status)?.label || p.status}</Badge>
                       </div>
-                      <p className="text-sm text-gray-700 mb-2">{p.objetivo}</p>
+                      <p className="text-sm text-gray-700 mb-2">{p.metas?.objetivo || ''}</p>
                       {p.descricao && (
                         <div className="bg-gray-50 p-2 rounded text-xs text-gray-600 mb-3">
                           {p.descricao}

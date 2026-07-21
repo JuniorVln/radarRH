@@ -16,82 +16,105 @@ const PAR_CONFIG = {
 }
 
 const EMPTY_FORM = {
-  colaborador_nome: '',
+  colaborador_id: '',
   gestor_nome: '',
   tipo_par: 'AVANCE' as FeedbackType,
   data_feedback: new Date().toISOString().split('T')[0],
   proximo_feedback: '',
   descricao: '',
+  status: 'realizado' as 'pendente' | 'realizado' | 'atrasado',
 }
+
+type ColabOption = { id: string; nome: string }
 
 export function FeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<any[]>([])
+  const [colaboradores, setColaboradores] = useState<ColabOption[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [showNovo, setShowNovo] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [editing, setEditing] = useState<any | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ ...EMPTY_FORM })
 
-  const fetchFeedbacks = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('feedbacks')
-      .select('*')
-      .order('data_feedback', { ascending: false })
-    if (error) toast.error('Erro ao carregar feedbacks.')
-    else setFeedbacks(data || [])
+    const [fbRes, colRes] = await Promise.all([
+      supabase.from('feedbacks').select('*').order('data_feedback', { ascending: false }),
+      supabase.from('colaboradores').select('id, nome').eq('status', 'ativo').order('nome'),
+    ])
+    if (fbRes.error) toast.error('Erro ao carregar feedbacks.')
+    else setFeedbacks(fbRes.data || [])
+    if (colRes.data) setColaboradores(colRes.data as ColabOption[])
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchFeedbacks() }, [fetchFeedbacks])
+  useEffect(() => { fetchData() }, [fetchData])
+
+  const nomeColaborador = (f: any) => {
+    const c = colaboradores.find(c => c.id === f.colaborador_id)
+    return c?.nome || f.gestor_nome || '—'
+  }
+
+  const openNew = () => {
+    setEditing(null)
+    setForm({ ...EMPTY_FORM })
+    setShowModal(true)
+  }
+
+  const openEdit = (f: any) => {
+    setEditing(f)
+    setForm({
+      colaborador_id: f.colaborador_id || '',
+      gestor_nome: f.gestor_nome || '',
+      tipo_par: f.tipo_par || 'AVANCE',
+      data_feedback: f.data_feedback || '',
+      proximo_feedback: f.proximo_feedback || '',
+      descricao: f.descricao || '',
+      status: f.status || 'realizado',
+    })
+    setShowModal(true)
+  }
 
   const handleSave = async () => {
-    if (!form.colaborador_nome.trim() || !form.data_feedback) {
+    if (!form.colaborador_id || !form.data_feedback) {
       toast.error('Colaborador e data são obrigatórios.')
       return
     }
     setSaving(true)
+    const colabNome = colaboradores.find(c => c.id === form.colaborador_id)?.nome || null
     const payload: any = {
+      colaborador_id: form.colaborador_id,
+      gestor_nome: form.gestor_nome || colabNome,
       tipo_par: form.tipo_par,
       data_feedback: form.data_feedback,
+      proximo_feedback: form.proximo_feedback || null,
       descricao: form.descricao || null,
-      status: 'realizado',
+      status: form.status,
     }
-    // Armazena nome do colaborador no campo gestor_nome como workaround
-    // (feedbacks não tem campo texto direto de nome de colaborador sem FK)
-    // Por simplicidade usamos gestor_nome para colaborador e descricao para detalhe
-    payload.gestor_nome = form.colaborador_nome
-    if (form.gestor_nome) payload.descricao = `Gestor: ${form.gestor_nome}\n\n${form.descricao}`
-    if (form.proximo_feedback) payload.proximo_feedback = form.proximo_feedback
-
-    // Tenta buscar colaborador por nome para preencher FK
-    const { data: colabs } = await supabase
-      .from('colaboradores')
-      .select('id')
-      .ilike('nome', `%${form.colaborador_nome}%`)
-      .limit(1)
-
-    if (colabs && colabs.length > 0) {
-      payload.colaborador_id = colabs[0].id
-    }
-
-    const { error } = await supabase.from('feedbacks').insert(payload)
+    const { error } = editing
+      ? await supabase.from('feedbacks').update(payload).eq('id', editing.id)
+      : await supabase.from('feedbacks').insert(payload)
     setSaving(false)
     if (error) { toast.error('Erro ao salvar: ' + error.message); return }
-    toast.success('Feedback registrado!')
+    toast.success(editing ? 'Feedback atualizado!' : 'Feedback registrado!')
     setForm({ ...EMPTY_FORM })
-    setShowNovo(false)
-    fetchFeedbacks()
+    setEditing(null)
+    setShowModal(false)
+    fetchData()
   }
 
   const handleDelete = async (id: string) => {
+    if (!confirm('Excluir este feedback?')) return
     await supabase.from('feedbacks').delete().eq('id', id)
     toast.success('Feedback excluído.')
-    fetchFeedbacks()
+    setShowModal(false)
+    setEditing(null)
+    fetchData()
   }
 
   const filtered = feedbacks.filter(f =>
-    !search || (f.gestor_nome || '').toLowerCase().includes(search.toLowerCase()) ||
+    !search || nomeColaborador(f).toLowerCase().includes(search.toLowerCase()) ||
     (f.descricao || '').toLowerCase().includes(search.toLowerCase())
   )
 
@@ -127,7 +150,7 @@ export function FeedbackPage() {
           <div className="flex-1 max-w-sm">
             <SearchInput value={search} onChange={setSearch} placeholder="Buscar por colaborador..." />
           </div>
-          <button className="btn-primary" onClick={() => setShowNovo(true)}>
+          <button className="btn-primary" onClick={openNew}>
             <Plus size={16} /> Registrar Feedback
           </button>
         </div>
@@ -136,7 +159,7 @@ export function FeedbackPage() {
           <div className="py-16 text-center text-gray-400">Carregando...</div>
         ) : filtered.length === 0 ? (
           <EmptyState icon={<MessageSquare size={32} />} title="Nenhum feedback registrado" description="Registre o primeiro feedback como Positivo, Neutro ou A Melhorar."
-            action={<button className="btn-primary" onClick={() => setShowNovo(true)}><Plus size={16} />Registrar Feedback</button>} />
+            action={<button className="btn-primary" onClick={openNew}><Plus size={16} />Registrar Feedback</button>} />
         ) : (
           <div className="overflow-x-auto">
             <table className="data-table">
@@ -153,8 +176,8 @@ export function FeedbackPage() {
               </thead>
               <tbody>
                 {filtered.map(f => (
-                  <tr key={f.id}>
-                    <td className="font-medium text-gray-900">{f.gestor_nome || '—'}</td>
+                  <tr key={f.id} className="cursor-pointer hover:bg-gray-50/80 transition-colors" onClick={() => openEdit(f)}>
+                    <td className="font-medium text-gray-900">{nomeColaborador(f)}</td>
                     <td>
                       <Badge variant={PAR_CONFIG[f.tipo_par as FeedbackType]?.badge || 'gray'}>{PAR_CONFIG[f.tipo_par as FeedbackType]?.title || f.tipo_par}</Badge>
                     </td>
@@ -164,7 +187,7 @@ export function FeedbackPage() {
                     <td>
                       <Badge variant={f.status === 'realizado' ? 'green' : f.status === 'atrasado' ? 'red' : 'yellow'}>{f.status}</Badge>
                     </td>
-                    <td>
+                    <td onClick={e => e.stopPropagation()}>
                       <button onClick={() => handleDelete(f.id)} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50">
                         <Trash2 size={15} />
                       </button>
@@ -177,13 +200,16 @@ export function FeedbackPage() {
         )}
       </div>
 
-      {/* Modal */}
-      <Modal open={showNovo} onClose={() => setShowNovo(false)} title="Registrar Feedback">
+      {/* Modal criar/editar */}
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? 'Feedback' : 'Registrar Feedback'}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Colaborador *</label>
-              <input className="input" placeholder="Nome do colaborador" value={form.colaborador_nome} onChange={e => setForm(p => ({ ...p, colaborador_nome: e.target.value }))} />
+              <select className="input" value={form.colaborador_id} onChange={e => setForm(p => ({ ...p, colaborador_id: e.target.value }))}>
+                <option value="">Selecione</option>
+                {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
             </div>
             <div>
               <label className="label">Gestor / Responsável</label>
@@ -205,7 +231,7 @@ export function FeedbackPage() {
               })}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="label">Data do Feedback *</label>
               <input className="input" type="date" value={form.data_feedback} onChange={e => setForm(p => ({ ...p, data_feedback: e.target.value }))} />
@@ -214,15 +240,32 @@ export function FeedbackPage() {
               <label className="label">Próximo Feedback</label>
               <input className="input" type="date" value={form.proximo_feedback} onChange={e => setForm(p => ({ ...p, proximo_feedback: e.target.value }))} />
             </div>
+            <div>
+              <label className="label">Status</label>
+              <select className="input" value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as typeof form.status }))}>
+                <option value="realizado">Realizado</option>
+                <option value="pendente">Pendente</option>
+                <option value="atrasado">Atrasado</option>
+              </select>
+            </div>
           </div>
           <div>
             <label className="label">Descrição</label>
-            <textarea className="input h-24 resize-none" placeholder="Descreva o feedback..." value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
+            <textarea className="input h-32 resize-none" placeholder="Descreva o feedback..." value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-gray-100">
-          <button className="btn-secondary" onClick={() => setShowNovo(false)}>Cancelar</button>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Salvando...' : 'Salvar Feedback'}</button>
+        <div className="flex justify-between gap-3 mt-5 pt-4 border-t border-gray-100">
+          <div>
+            {editing && (
+              <button className="btn-danger" onClick={() => handleDelete(editing.id)}>
+                <Trash2 size={15} /> Excluir
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button className="btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
+            <button className="btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar Alterações' : 'Salvar Feedback'}</button>
+          </div>
         </div>
       </Modal>
     </Layout>

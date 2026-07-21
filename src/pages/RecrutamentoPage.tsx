@@ -18,7 +18,7 @@ import { Avatar, Badge, EmptyState, Modal, SearchInput, Tabs } from '../componen
 import { StatCard } from '../components/ui/StatCard'
 import { supabase } from '../lib/supabase'
 import type { Candidato, CandidatoTeste, EmailTemplate, TesteTecnico, Vaga } from '../lib/supabase'
-import { maskPhone } from '../lib/masks'
+import { formatMoney, maskPhone, parseMoney } from '../lib/masks'
 import { Communication } from '../lib/communication'
 import toast from 'react-hot-toast'
 
@@ -72,12 +72,28 @@ const EMPTY_TEMPLATE = {
 }
 
 const EMPTY_TESTE = {
-  titulo: '',
+  nome: '',
   area: '',
   tempo_estimado_minutos: '',
   pontuacao_maxima: '100',
   link_externo: '',
   descricao: '',
+}
+
+// O banco não tem coluna própria para o link do teste; ele fica anexado à descrição.
+const LINK_PREFIX = 'Link: '
+
+function splitDescricaoLink(descricao: string | null): { texto: string; link: string } {
+  if (!descricao) return { texto: '', link: '' }
+  const match = descricao.match(/\n?Link:\s*(https?:\/\/\S+)\s*$/)
+  if (!match) return { texto: descricao, link: '' }
+  return { texto: descricao.replace(match[0], '').trim(), link: match[1] }
+}
+
+function joinDescricaoLink(texto: string, link: string): string | null {
+  const parts = [texto.trim(), link.trim() ? LINK_PREFIX + link.trim() : '']
+  const joined = parts.filter(Boolean).join('\n\n')
+  return joined || null
 }
 
 const EMPTY_CANDIDATO_TESTE = {
@@ -132,6 +148,84 @@ export function RecrutamentoPage() {
   const [formTemplate, setFormTemplate] = useState({ ...EMPTY_TEMPLATE })
   const [formTeste, setFormTeste] = useState({ ...EMPTY_TESTE })
   const [formCandidatoTeste, setFormCandidatoTeste] = useState({ ...EMPTY_CANDIDATO_TESTE })
+  const [editingVaga, setEditingVaga] = useState<Vaga | null>(null)
+  const [editingTeste, setEditingTeste] = useState<TesteTecnico | null>(null)
+  const [editingCand, setEditingCand] = useState<Candidato | null>(null)
+  const [statusVaga, setStatusVaga] = useState<Vaga['status']>('aberta')
+
+  const openNovaVaga = () => {
+    setEditingVaga(null)
+    setFormVaga({ ...EMPTY_VAGA })
+    setStatusVaga('aberta')
+    setShowNovaVaga(true)
+  }
+
+  const openEditVaga = (v: Vaga) => {
+    setEditingVaga(v)
+    setFormVaga({
+      titulo: v.titulo,
+      setor: v.setor || '',
+      nivel: v.nivel || 'Pleno',
+      tipo_contrato: v.tipo_contrato || 'CLT',
+      modelo_trabalho: (v.modelo_trabalho || 'Presencial') as typeof EMPTY_VAGA.modelo_trabalho,
+      descricao: v.descricao || '',
+      requisitos: v.requisitos || '',
+      numero_vagas: v.numero_vagas || 1,
+      salario_min: formatMoney(v.salario_min),
+      salario_max: formatMoney(v.salario_max),
+      data_limite: v.data_limite || '',
+      empresa: v.empresa || '',
+      area: v.area || '',
+      localidade: v.localidade || '',
+      prioridade: (v.prioridade || 'media') as typeof EMPTY_VAGA.prioridade,
+      responsavel: v.responsavel || '',
+      motivo_abertura: v.motivo_abertura || '',
+      beneficios: v.beneficios || '',
+    })
+    setStatusVaga(v.status)
+    setShowNovaVaga(true)
+  }
+
+  const openNovoTeste = () => {
+    setEditingTeste(null)
+    setFormTeste({ ...EMPTY_TESTE })
+    setShowNovoTeste(true)
+  }
+
+  const openEditTeste = (t: TesteTecnico) => {
+    setEditingTeste(t)
+    const { texto, link } = splitDescricaoLink(t.descricao)
+    setFormTeste({
+      nome: t.nome,
+      area: t.area || '',
+      tempo_estimado_minutos: t.tempo_estimado_minutos != null ? String(t.tempo_estimado_minutos) : '',
+      pontuacao_maxima: t.pontuacao_maxima != null ? String(t.pontuacao_maxima) : '',
+      link_externo: link,
+      descricao: texto,
+    })
+    setShowNovoTeste(true)
+  }
+
+  const openNovoCandidato = () => {
+    setEditingCand(null)
+    setFormCand({ ...EMPTY_CANDIDATO })
+    setShowNovoCandidato(true)
+  }
+
+  const openEditCandidato = (c: Candidato) => {
+    setEditingCand(c)
+    setFormCand({
+      nome: c.nome,
+      email: c.email || '',
+      telefone: c.telefone || '',
+      etapa_kanban: c.etapa_kanban as typeof EMPTY_CANDIDATO.etapa_kanban,
+      vaga_id: c.vaga_id || '',
+      aderencia_vaga: c.aderencia_vaga != null ? String(c.aderencia_vaga) : '',
+      area: c.area || '',
+      observacoes_internas: c.observacoes_internas || '',
+    })
+    setShowNovoCandidato(true)
+  }
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -202,7 +296,7 @@ export function RecrutamentoPage() {
     }
 
     setSavingVaga(true)
-    const { error } = await supabase.from('vagas').insert({
+    const vagaPayload = {
       titulo: formVaga.titulo.trim(),
       setor: formVaga.setor || null,
       nivel: formVaga.nivel,
@@ -211,8 +305,8 @@ export function RecrutamentoPage() {
       descricao: formVaga.descricao || null,
       requisitos: formVaga.requisitos || null,
       numero_vagas: Number(formVaga.numero_vagas) || 1,
-      salario_min: formVaga.salario_min ? Number(formVaga.salario_min) : null,
-      salario_max: formVaga.salario_max ? Number(formVaga.salario_max) : null,
+      salario_min: parseMoney(formVaga.salario_min),
+      salario_max: parseMoney(formVaga.salario_max),
       data_limite: formVaga.data_limite || null,
       empresa: formVaga.empresa || null,
       area: formVaga.area || null,
@@ -221,8 +315,11 @@ export function RecrutamentoPage() {
       responsavel: formVaga.responsavel || null,
       motivo_abertura: formVaga.motivo_abertura || null,
       beneficios: formVaga.beneficios || null,
-      status: 'aberta',
-    })
+      status: statusVaga,
+    }
+    const { error } = editingVaga
+      ? await supabase.from('vagas').update(vagaPayload).eq('id', editingVaga.id)
+      : await supabase.from('vagas').insert(vagaPayload)
     setSavingVaga(false)
 
     if (error) {
@@ -230,7 +327,8 @@ export function RecrutamentoPage() {
       return
     }
 
-    toast.success('Vaga publicada.')
+    toast.success(editingVaga ? 'Vaga atualizada.' : 'Vaga publicada.')
+    setEditingVaga(null)
     setFormVaga({ ...EMPTY_VAGA })
     setShowNovaVaga(false)
     fetchAll()
@@ -258,7 +356,9 @@ export function RecrutamentoPage() {
       area: formCand.area || null,
       observacoes_internas: formCand.observacoes_internas || null,
     }
-    const { error } = await supabase.from('candidatos').insert(payload)
+    const { error } = editingCand
+      ? await supabase.from('candidatos').update(payload).eq('id', editingCand.id)
+      : await supabase.from('candidatos').insert(payload)
     setSavingCand(false)
 
     if (error) {
@@ -266,7 +366,8 @@ export function RecrutamentoPage() {
       return
     }
 
-    toast.success('Candidato adicionado.')
+    toast.success(editingCand ? 'Candidato atualizado.' : 'Candidato adicionado.')
+    setEditingCand(null)
     setFormCand({ ...EMPTY_CANDIDATO })
     setShowNovoCandidato(false)
     fetchAll()
@@ -299,20 +400,22 @@ export function RecrutamentoPage() {
   }
 
   const handleSaveTeste = async () => {
-    if (!formTeste.titulo.trim()) {
+    if (!formTeste.nome.trim()) {
       toast.error('Título do teste é obrigatório.')
       return
     }
 
     setSavingTeste(true)
-    const { error } = await supabase.from('testes_tecnicos').insert({
-      titulo: formTeste.titulo.trim(),
+    const payload = {
+      nome: formTeste.nome.trim(),
       area: formTeste.area || null,
       tempo_estimado_minutos: formTeste.tempo_estimado_minutos ? Number(formTeste.tempo_estimado_minutos) : null,
       pontuacao_maxima: formTeste.pontuacao_maxima ? Number(formTeste.pontuacao_maxima) : null,
-      link_externo: formTeste.link_externo || null,
-      descricao: formTeste.descricao || null,
-    })
+      descricao: joinDescricaoLink(formTeste.descricao, formTeste.link_externo),
+    }
+    const { error } = editingTeste
+      ? await supabase.from('testes_tecnicos').update(payload).eq('id', editingTeste.id)
+      : await supabase.from('testes_tecnicos').insert(payload)
     setSavingTeste(false)
 
     if (error) {
@@ -320,7 +423,8 @@ export function RecrutamentoPage() {
       return
     }
 
-    toast.success('Teste técnico registrado.')
+    toast.success(editingTeste ? 'Teste atualizado.' : 'Teste técnico registrado.')
+    setEditingTeste(null)
     setFormTeste({ ...EMPTY_TESTE })
     setShowNovoTeste(false)
     fetchAll()
@@ -339,7 +443,6 @@ export function RecrutamentoPage() {
       status: formCandidatoTeste.status,
       resultado_score: formCandidatoTeste.resultado_score ? Number(formCandidatoTeste.resultado_score) : null,
       observacoes: formCandidatoTeste.observacoes || null,
-      concluido_em: null,
     })
     setSavingCandidatoTeste(false)
 
@@ -455,10 +558,10 @@ export function RecrutamentoPage() {
             onChange={v => setTab(v as RecrutamentoTab)}
           />
           <div className="flex gap-2">
-            {tab === 'vagas' && <button className="btn-primary" onClick={() => setShowNovaVaga(true)}><Plus size={16} />Nova Vaga</button>}
-            {tab === 'testes' && <button className="btn-primary" onClick={() => setShowNovoTeste(true)}><Plus size={16} />Novo Teste</button>}
+            {tab === 'vagas' && <button className="btn-primary" onClick={openNovaVaga}><Plus size={16} />Nova Vaga</button>}
+            {tab === 'testes' && <button className="btn-primary" onClick={openNovoTeste}><Plus size={16} />Novo Teste</button>}
             {tab === 'templates' && <button className="btn-primary" onClick={() => setShowNovoTemplate(true)}><Plus size={16} />Novo Template</button>}
-            {tab === 'candidatos' && <button className="btn-primary" onClick={() => setShowNovoCandidato(true)}><Plus size={16} />Novo Candidato</button>}
+            {tab === 'candidatos' && <button className="btn-primary" onClick={openNovoCandidato}><Plus size={16} />Novo Candidato</button>}
           </div>
         </div>
 
@@ -502,7 +605,7 @@ export function RecrutamentoPage() {
 
                         return (
                           <div key={c.id} className="kanban-card group">
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-2 cursor-pointer" onClick={() => openEditCandidato(c)}>
                               <Avatar name={c.nome} size="sm" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-800 truncate">{c.nome}</p>
@@ -567,11 +670,11 @@ export function RecrutamentoPage() {
         {tab === 'vagas' && (
           <div className="p-4 animate-fade-in">
             {vagas.length === 0 ? (
-              <EmptyState icon={<Briefcase size={32} />} title="Nenhuma vaga cadastrada" description="Cadastre vagas para iniciar o processo seletivo." action={<button className="btn-primary" onClick={() => setShowNovaVaga(true)}><Plus size={16} />Nova Vaga</button>} />
+              <EmptyState icon={<Briefcase size={32} />} title="Nenhuma vaga cadastrada" description="Cadastre vagas para iniciar o processo seletivo." action={<button className="btn-primary" onClick={openNovaVaga}><Plus size={16} />Nova Vaga</button>} />
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {vagas.map(v => (
-                  <div key={v.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-sm transition">
+                  <div key={v.id} onClick={() => openEditVaga(v)} className="cursor-pointer border border-gray-200 rounded-xl p-4 hover:shadow-sm hover:border-indigo-200 transition">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -588,7 +691,7 @@ export function RecrutamentoPage() {
                           {v.localidade && <span>{v.localidade}</span>}
                         </div>
                       </div>
-                      <button onClick={() => handleDeleteVaga(v.id)} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50">
+                      <button onClick={e => { e.stopPropagation(); handleDeleteVaga(v.id) }} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50">
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -611,32 +714,34 @@ export function RecrutamentoPage() {
         {tab === 'testes' && (
           <div className="p-4 animate-fade-in">
             {testes.length === 0 ? (
-              <EmptyState icon={<ClipboardCheck size={32} />} title="Nenhum teste técnico registrado" description="Registre provas, cases ou links externos para vincular aos candidatos." action={<button className="btn-primary" onClick={() => setShowNovoTeste(true)}><Plus size={16} />Novo Teste</button>} />
+              <EmptyState icon={<ClipboardCheck size={32} />} title="Nenhum teste técnico registrado" description="Registre provas, cases ou links externos para vincular aos candidatos." action={<button className="btn-primary" onClick={openNovoTeste}><Plus size={16} />Novo Teste</button>} />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {testes.map(t => (
-                  <div key={t.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-sm transition">
+                {testes.map(t => {
+                  const { texto, link } = splitDescricaoLink(t.descricao)
+                  return (
+                  <div key={t.id} onClick={() => openEditTeste(t)} className="cursor-pointer border border-gray-200 rounded-xl p-4 hover:shadow-sm hover:border-indigo-200 transition">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h4 className="font-semibold text-gray-900">{t.titulo}</h4>
+                        <h4 className="font-semibold text-gray-900">{t.nome}</h4>
                         <div className="flex flex-wrap gap-2 mt-2">
                           {t.area && <Badge variant="indigo" size="sm">{t.area}</Badge>}
                           {t.tempo_estimado_minutos != null && <Badge variant="gray" size="sm">{t.tempo_estimado_minutos} min</Badge>}
                           {t.pontuacao_maxima != null && <Badge variant="green" size="sm">{t.pontuacao_maxima} pts</Badge>}
                         </div>
                       </div>
-                      <button onClick={() => handleDeleteTeste(t.id)} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50">
+                      <button onClick={e => { e.stopPropagation(); handleDeleteTeste(t.id) }} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50">
                         <Trash2 size={15} />
                       </button>
                     </div>
-                    {t.descricao && <p className="text-xs text-gray-500 mt-3 line-clamp-3">{t.descricao}</p>}
-                    {t.link_externo && (
-                      <a href={t.link_externo} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 hover:text-indigo-700 mt-2 inline-block">
+                    {texto && <p className="text-xs text-gray-500 mt-3 line-clamp-3">{texto}</p>}
+                    {link && (
+                      <a href={link} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="text-xs text-indigo-600 hover:text-indigo-700 mt-2 inline-block">
                         Abrir link do teste
                       </a>
                     )}
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>
@@ -709,7 +814,7 @@ export function RecrutamentoPage() {
         )}
       </div>
 
-      <Modal open={showNovaVaga} onClose={() => setShowNovaVaga(false)} title="Nova Vaga" maxWidth="max-w-3xl">
+      <Modal open={showNovaVaga} onClose={() => setShowNovaVaga(false)} title={editingVaga ? 'Editar Vaga' : 'Nova Vaga'} maxWidth="max-w-3xl">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className="label">Título da vaga *</label>
@@ -782,12 +887,22 @@ export function RecrutamentoPage() {
           </div>
           <div>
             <label className="label">Salário mínimo</label>
-            <input type="number" className="input" placeholder="R$ 0,00" value={formVaga.salario_min} onChange={e => setFormVaga(p => ({ ...p, salario_min: e.target.value }))} />
+            <input className="input" inputMode="decimal" placeholder="Ex: 2.500,00" value={formVaga.salario_min} onChange={e => setFormVaga(p => ({ ...p, salario_min: e.target.value }))} />
           </div>
           <div>
             <label className="label">Salário máximo</label>
-            <input type="number" className="input" placeholder="R$ 0,00" value={formVaga.salario_max} onChange={e => setFormVaga(p => ({ ...p, salario_max: e.target.value }))} />
+            <input className="input" inputMode="decimal" placeholder="Ex: 3.200,00" value={formVaga.salario_max} onChange={e => setFormVaga(p => ({ ...p, salario_max: e.target.value }))} />
           </div>
+          {editingVaga && (
+            <div>
+              <label className="label">Status da vaga</label>
+              <select className="input" value={statusVaga} onChange={e => setStatusVaga(e.target.value as Vaga['status'])}>
+                <option value="aberta">Aberta</option>
+                <option value="pausada">Pausada</option>
+                <option value="fechada">Fechada</option>
+              </select>
+            </div>
+          )}
           <div className="md:col-span-2">
             <label className="label">Motivo da abertura</label>
             <input className="input" placeholder="Ex: Substituição, aumento de quadro, projeto novo" value={formVaga.motivo_abertura} onChange={e => setFormVaga(p => ({ ...p, motivo_abertura: e.target.value }))} />
@@ -807,11 +922,11 @@ export function RecrutamentoPage() {
         </div>
         <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-gray-100">
           <button className="btn-secondary" onClick={() => setShowNovaVaga(false)}>Cancelar</button>
-          <button className="btn-primary" onClick={handleSaveVaga} disabled={savingVaga}>{savingVaga ? 'Salvando...' : 'Publicar Vaga'}</button>
+          <button className="btn-primary" onClick={handleSaveVaga} disabled={savingVaga}>{savingVaga ? 'Salvando...' : editingVaga ? 'Salvar Alterações' : 'Publicar Vaga'}</button>
         </div>
       </Modal>
 
-      <Modal open={showNovoCandidato} onClose={() => setShowNovoCandidato(false)} title="Novo Candidato">
+      <Modal open={showNovoCandidato} onClose={() => setShowNovoCandidato(false)} title={editingCand ? 'Editar Candidato' : 'Novo Candidato'}>
         <div className="space-y-4">
           <div>
             <label className="label">Nome *</label>
@@ -859,7 +974,7 @@ export function RecrutamentoPage() {
         </div>
         <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-gray-100">
           <button className="btn-secondary" onClick={() => setShowNovoCandidato(false)}>Cancelar</button>
-          <button className="btn-primary" onClick={handleSaveCandidato} disabled={savingCand}>{savingCand ? 'Salvando...' : 'Adicionar Candidato'}</button>
+          <button className="btn-primary" onClick={handleSaveCandidato} disabled={savingCand}>{savingCand ? 'Salvando...' : editingCand ? 'Salvar Alterações' : 'Adicionar Candidato'}</button>
         </div>
       </Modal>
 
@@ -895,11 +1010,11 @@ export function RecrutamentoPage() {
         </div>
       </Modal>
 
-      <Modal open={showNovoTeste} onClose={() => setShowNovoTeste(false)} title="Novo Teste Técnico">
+      <Modal open={showNovoTeste} onClose={() => setShowNovoTeste(false)} title={editingTeste ? 'Editar Teste Técnico' : 'Novo Teste Técnico'}>
         <div className="space-y-4">
           <div>
             <label className="label">Título *</label>
-            <input className="input" placeholder="Ex: Case de Atendimento" value={formTeste.titulo} onChange={e => setFormTeste(p => ({ ...p, titulo: e.target.value }))} />
+            <input className="input" placeholder="Ex: Case de Atendimento" value={formTeste.nome} onChange={e => setFormTeste(p => ({ ...p, nome: e.target.value }))} />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
@@ -926,7 +1041,7 @@ export function RecrutamentoPage() {
         </div>
         <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-gray-100">
           <button className="btn-secondary" onClick={() => setShowNovoTeste(false)}>Cancelar</button>
-          <button className="btn-primary" onClick={handleSaveTeste} disabled={savingTeste}>{savingTeste ? 'Salvando...' : 'Salvar Teste'}</button>
+          <button className="btn-primary" onClick={handleSaveTeste} disabled={savingTeste}>{savingTeste ? 'Salvando...' : editingTeste ? 'Salvar Alterações' : 'Salvar Teste'}</button>
         </div>
       </Modal>
 
@@ -940,7 +1055,7 @@ export function RecrutamentoPage() {
             <label className="label">Teste *</label>
             <select className="input" value={formCandidatoTeste.teste_id} onChange={e => setFormCandidatoTeste(p => ({ ...p, teste_id: e.target.value }))}>
               <option value="">Selecione um teste</option>
-              {testes.map(t => <option key={t.id} value={t.id}>{t.titulo}</option>)}
+              {testes.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Modal } from '../ui'
 import { supabase } from '../../lib/supabase'
-import { maskCPF, maskPhone, maskCEP } from '../../lib/masks'
+import { maskCPF, maskPhone, maskCEP, parseMoney } from '../../lib/masks'
 import toast from 'react-hot-toast'
 import type { AnexoColaborador, Colaborador, Dependente } from '../../lib/supabase'
 
@@ -61,6 +61,7 @@ export function ColaboradorModal({ open, onClose, onSaved, colaborador }: Props)
   const [activeTab, setActiveTab] = useState<'pessoais' | 'contratuais' | 'documentos' | 'dependentes' | 'anexos'>('pessoais')
   const [dependentes, setDependentes] = useState<Partial<Dependente>[]>([])
   const [anexos, setAnexos] = useState<Partial<AnexoColaborador>[]>([])
+  const [demissao, setDemissao] = useState({ data: '', valor_rescisao: '' })
 
   useEffect(() => {
     if (colaborador) {
@@ -110,6 +111,7 @@ export function ColaboradorModal({ open, onClose, onSaved, colaborador }: Props)
       setDependentes([])
       setAnexos([])
     }
+    setDemissao({ data: '', valor_rescisao: '' })
     setActiveTab('pessoais')
   }, [colaborador, open])
 
@@ -323,6 +325,39 @@ export function ColaboradorModal({ open, onClose, onSaved, colaborador }: Props)
             break
           }
         }
+      }
+    }
+
+    // Registra movimentações de admissão/demissão — alimentam Dashboard e Turnover
+    if (!error && colabId) {
+      const hoje = new Date().toISOString().split('T')[0]
+      const movs: any[] = []
+      if (!colaborador) {
+        movs.push({
+          colaborador_id: colabId,
+          tipo: 'admissao',
+          data: form.data_admissao || hoje,
+          descricao: 'Admissão',
+        })
+      } else if (form.status === 'demitido' && colaborador.status !== 'demitido') {
+        movs.push({
+          colaborador_id: colabId,
+          tipo: 'demissao',
+          data: demissao.data || hoje,
+          valor: parseMoney(demissao.valor_rescisao),
+          descricao: 'Demissão',
+        })
+      } else if (form.status === 'ativo' && colaborador.status === 'demitido') {
+        movs.push({
+          colaborador_id: colabId,
+          tipo: 'admissao',
+          data: hoje,
+          descricao: 'Readmissão',
+        })
+      }
+      if (movs.length > 0) {
+        const { error: movError } = await supabase.from('movimentacoes').insert(movs)
+        if (movError) toast.error('Colaborador salvo, mas houve erro ao registrar a movimentação: ' + movError.message)
       }
     }
 
@@ -573,6 +608,19 @@ export function ColaboradorModal({ open, onClose, onSaved, colaborador }: Props)
                     <option value="demitido">Demitido</option>
                   </select>
                 </div>
+                {form.status === 'demitido' && colaborador?.status !== 'demitido' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Data da Demissão</label>
+                      <input type="date" className="input-field" value={demissao.data} onChange={e => setDemissao(p => ({ ...p, data: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Valor da Rescisão (R$)</label>
+                      <input type="text" inputMode="decimal" className="input-field" placeholder="Ex: 5.400,00" value={demissao.valor_rescisao} onChange={e => setDemissao(p => ({ ...p, valor_rescisao: e.target.value }))} />
+                      <p className="text-xs text-gray-400 mt-1">Registrado no histórico de custos com desligamentos.</p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -22,12 +22,25 @@ export function TreinamentosPage() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ ...EMPTY_TRILHA })
   const [formAtrib, setFormAtrib] = useState({ ...EMPTY_ATRIB })
+  const [editing, setEditing] = useState<any | null>(null)
+
+  const openNovaTrilha = () => {
+    setEditing(null)
+    setForm({ ...EMPTY_TRILHA })
+    setShowNova(true)
+  }
+
+  const openEditTrilha = (t: any) => {
+    setEditing(t)
+    setForm({ nome: t.nome || '', setor: t.setor || '', descricao: t.descricao || '', status: t.status || 'ativo' })
+    setShowNova(true)
+  }
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     const [trilhasRes, progRes, colabsRes] = await Promise.all([
       supabase.from('trilhas').select('*').order('nome'),
-      supabase.from('trilha_colaborador').select('*').order('atualizad_em', { ascending: false }),
+      supabase.from('trilha_colaborador').select('*').order('atualizado_em', { ascending: false }),
       supabase.from('colaboradores').select('id, nome, setor').order('nome'),
     ])
     if (trilhasRes.data) setTrilhas(trilhasRes.data)
@@ -41,12 +54,14 @@ export function TreinamentosPage() {
   const handleSaveTrilha = async () => {
     if (!form.nome.trim()) { toast.error('Nome é obrigatório.'); return }
     setSaving(true)
-    const payload: any = { nome: form.nome, descricao: form.descricao || null, status: form.status }
-    if (form.setor) payload.setor = form.setor
-    const { error } = await supabase.from('trilhas').insert(payload)
+    const payload: any = { nome: form.nome, setor: form.setor || null, descricao: form.descricao || null, status: form.status }
+    const { error } = editing
+      ? await supabase.from('trilhas').update(payload).eq('id', editing.id)
+      : await supabase.from('trilhas').insert(payload)
     setSaving(false)
-    if (error) { toast.error('Erro ao criar trilha: ' + error.message); return }
-    toast.success('Trilha criada!')
+    if (error) { toast.error('Erro ao salvar trilha: ' + error.message); return }
+    toast.success(editing ? 'Trilha atualizada!' : 'Trilha criada!')
+    setEditing(null)
     setForm({ ...EMPTY_TRILHA })
     setShowNova(false)
     fetchAll()
@@ -107,7 +122,7 @@ export function TreinamentosPage() {
           />
           <div className="flex gap-2">
             {tab === 'trilhas' && (
-              <button className="btn-primary" onClick={() => setShowNova(true)}>
+              <button className="btn-primary" onClick={openNovaTrilha}>
                 <Plus size={16} /> Nova Trilha
               </button>
             )}
@@ -133,7 +148,7 @@ export function TreinamentosPage() {
             ) : (
               <div className="space-y-3">
                 {trilhasFiltradas.map(t => (
-                  <div key={t.id} className="border border-gray-200 rounded-xl p-4 flex items-start justify-between hover:shadow-sm transition">
+                  <div key={t.id} onClick={() => openEditTrilha(t)} className="cursor-pointer border border-gray-200 rounded-xl p-4 flex items-start justify-between hover:shadow-sm hover:border-indigo-200 transition">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold text-gray-900">{t.nome}</h4>
@@ -145,7 +160,7 @@ export function TreinamentosPage() {
                         {progresso.filter(p => p.trilha_id === t.id).length} colaboradores atribuídos
                       </p>
                     </div>
-                    <button onClick={() => handleDeleteTrilha(t.id)} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 ml-4">
+                    <button onClick={e => { e.stopPropagation(); handleDeleteTrilha(t.id) }} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 ml-4">
                       <Trash2 size={15} />
                     </button>
                   </div>
@@ -173,16 +188,40 @@ export function TreinamentosPage() {
                         <td className="font-medium text-gray-900">{p.colaboradorNome}</td>
                         <td className="text-gray-600">{p.trilhaNome}</td>
                         <td>
-                          <Badge variant={p.status === 'concluido' ? 'green' : p.status === 'em_andamento' ? 'blue' : 'gray'}>
-                            {p.status === 'nao_iniciado' ? 'Não iniciado' : p.status === 'em_andamento' ? 'Em andamento' : 'Concluído'}
-                          </Badge>
+                          <select
+                            className="input text-xs py-1 min-w-[130px]"
+                            value={p.status}
+                            onChange={async e => {
+                              const { error } = await supabase.from('trilha_colaborador').update({ status: e.target.value }).eq('id', p.id)
+                              if (error) toast.error('Erro ao atualizar status.')
+                              else fetchAll()
+                            }}
+                          >
+                            <option value="nao_iniciado">Não iniciado</option>
+                            <option value="em_andamento">Em andamento</option>
+                            <option value="concluido">Concluído</option>
+                          </select>
                         </td>
                         <td>
                           <div className="flex items-center gap-2 min-w-32">
                             <div className="flex-1 bg-gray-200 rounded-full h-2">
                               <div className="bg-indigo-500 h-2 rounded-full transition-all" style={{ width: `${p.progresso}%` }} />
                             </div>
-                            <span className="text-xs text-gray-500 w-10">{p.progresso}%</span>
+                            <input
+                              key={p.id + String(p.progresso)}
+                              className="input w-16 text-xs py-1"
+                              type="number"
+                              min="0"
+                              max="100"
+                              defaultValue={p.progresso}
+                              onBlur={async e => {
+                                const novo = Math.min(100, Math.max(0, Number(e.target.value) || 0))
+                                if (novo === p.progresso) return
+                                const { error } = await supabase.from('trilha_colaborador').update({ progresso: novo, status: novo >= 100 ? 'concluido' : novo > 0 ? 'em_andamento' : 'nao_iniciado' }).eq('id', p.id)
+                                if (error) toast.error('Erro ao atualizar progresso.')
+                                else fetchAll()
+                              }}
+                            />
                           </div>
                         </td>
                       </tr>
@@ -196,7 +235,7 @@ export function TreinamentosPage() {
       </div>
 
       {/* Modal Nova Trilha */}
-      <Modal open={showNova} onClose={() => setShowNova(false)} title="Nova Trilha de Treinamento">
+      <Modal open={showNova} onClose={() => setShowNova(false)} title={editing ? 'Editar Trilha' : 'Nova Trilha de Treinamento'}>
         <div className="space-y-4">
           <div>
             <label className="label">Nome da Trilha *</label>
@@ -220,7 +259,7 @@ export function TreinamentosPage() {
         </div>
         <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-gray-100">
           <button className="btn-secondary" onClick={() => setShowNova(false)}>Cancelar</button>
-          <button className="btn-primary" onClick={handleSaveTrilha} disabled={saving}>{saving ? 'Salvando...' : 'Criar Trilha'}</button>
+          <button className="btn-primary" onClick={handleSaveTrilha} disabled={saving}>{saving ? 'Salvando...' : editing ? 'Salvar Alterações' : 'Criar Trilha'}</button>
         </div>
       </Modal>
 

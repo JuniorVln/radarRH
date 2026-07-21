@@ -12,12 +12,12 @@ import {
   Train,
 } from 'lucide-react'
 import {
-  BENEFICIOS_MAIO_2026_AMOSTRA,
   CONFERENCIA_PLANILHA_MAIO_2026,
   PERIODO_BENEFICIOS_MAIO_2026,
   calcularBeneficioColaborador,
   gerarTotaisBeneficios,
 } from '../lib/beneficios'
+import { COLABORADORES_MAIO_2026 } from '../data/beneficios-maio-2026'
 
 type BeneficiosTab = 'resumo' | 'calculo' | 'conferencia'
 
@@ -34,10 +34,10 @@ export function BeneficiosPage() {
   const [tab, setTab] = useState<BeneficiosTab>('resumo')
   const [search, setSearch] = useState('')
   const resultados = useMemo(
-    () => BENEFICIOS_MAIO_2026_AMOSTRA.map(item => calcularBeneficioColaborador(item)),
+    () => COLABORADORES_MAIO_2026.map(item => calcularBeneficioColaborador(item)),
     []
   )
-  const totaisAmostra = useMemo(() => gerarTotaisBeneficios(resultados), [resultados])
+  const totaisCalculados = useMemo(() => gerarTotaisBeneficios(resultados), [resultados])
   const totaisPlanilha = useMemo(
     () =>
       CONFERENCIA_PLANILHA_MAIO_2026.reduce(
@@ -128,13 +128,13 @@ export function BeneficiosPage() {
           <div className="p-5 space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                <p className="text-sm text-gray-500">Amostra calculada pelo motor</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totaisAmostra.totalVr)}</p>
-                <p className="text-xs text-gray-500 mt-1">VR com faltas, atestados, férias, feriado regional e frutas.</p>
+                <p className="text-sm text-gray-500">Total VR calculado</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totaisCalculados.totalVr)}</p>
+                <p className="text-xs text-gray-500 mt-1">66 colaboradores — faltas, férias, feriados regionais e frutas.</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                <p className="text-sm text-gray-500">VT da amostra</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totaisAmostra.totalVt)}</p>
+                <p className="text-sm text-gray-500">Total VT calculado</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(totaisCalculados.totalVt)}</p>
                 <p className="text-xs text-gray-500 mt-1">Desconta home office e aceita valor fixo mensal.</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">

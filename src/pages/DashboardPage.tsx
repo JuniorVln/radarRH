@@ -200,41 +200,39 @@ export function DashboardPage() {
         setColaboradorNomeMap(nomeMap)
       }
 
+      // Admissões vêm da data_admissao dos colaboradores; demissões da tabela
+      // movimentacoes (gravada quando o status vira "demitido" no cadastro).
       const { data: movs } = await supabase.from('movimentacoes').select('tipo, data').order('data', { ascending: true })
-      if (movs) {
+      {
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-        const currentYear = new Date().getFullYear()
-        const grouped = months.map((m, i) => {
-          const monthMovs = movs.filter(mov => {
-            const date = parseLocalDate(mov.data)
-            return date?.getMonth() === i && date.getFullYear() === currentYear
-          })
-          return {
-            mes: m,
-            admissoes: monthMovs.filter(mov => mov.tipo === 'admissao').length,
-            demissoes: monthMovs.filter(mov => mov.tipo === 'demissao').length,
-          }
-        })
+        const hoje = new Date()
+        const admissaoDates = ((cols || []) as ColaboradorDashboard[])
+          .map(c => parseLocalDate(c.data_admissao))
+          .filter(Boolean) as Date[]
+        const demissaoDates = (movs || [])
+          .filter(mov => mov.tipo === 'demissao')
+          .map(mov => parseLocalDate(mov.data))
+          .filter(Boolean) as Date[]
 
-        setChartData(grouped.slice(-6))
+        // Janela rolante: últimos 6 meses terminando no mês atual
+        const grouped = []
+        for (let i = 5; i >= 0; i--) {
+          const ref = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
+          const inMonth = (d: Date) => d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth()
+          grouped.push({
+            mes: months[ref.getMonth()],
+            admissoes: admissaoDates.filter(inMonth).length,
+            demissoes: demissaoDates.filter(inMonth).length,
+          })
+        }
+        setChartData(grouped)
+
         const twelveMonthsAgo = addDays(new Date(), -365)
-        const demissoes12m = movs.filter(mov => {
-          const date = parseLocalDate(mov.data)
-          return mov.tipo === 'demissao' && date && date >= twelveMonthsAgo
-        }).length
+        const demissoes12m = demissaoDates.filter(d => d >= twelveMonthsAgo).length
         setStats(prev => ({
           ...prev,
           turnover: prev.total > 0 ? Number(((demissoes12m / prev.total) * 100).toFixed(1)) : 0,
         }))
-      } else {
-        setChartData([
-          { mes: 'Jan', admissoes: 0, demissoes: 0 },
-          { mes: 'Fev', admissoes: 0, demissoes: 0 },
-          { mes: 'Mar', admissoes: 0, demissoes: 0 },
-          { mes: 'Abr', admissoes: 0, demissoes: 0 },
-          { mes: 'Mai', admissoes: 0, demissoes: 0 },
-          { mes: 'Jun', admissoes: 0, demissoes: 0 },
-        ])
       }
 
       const { data: ferias } = await supabase

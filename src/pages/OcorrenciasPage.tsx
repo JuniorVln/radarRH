@@ -42,6 +42,28 @@ export function OcorrenciasPage() {
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ ...EMPTY_OCORRENCIA })
+  const [editing, setEditing] = useState<OcorrenciaComColaborador | null>(null)
+
+  const openNew = () => {
+    setEditing(null)
+    setForm({ ...EMPTY_OCORRENCIA })
+    setShowModal(true)
+  }
+
+  const openEdit = (o: OcorrenciaComColaborador) => {
+    setEditing(o)
+    setForm({
+      colaborador_id: o.colaborador_id || '',
+      tipo: o.tipo as typeof EMPTY_OCORRENCIA.tipo,
+      data_ocorrencia: o.data_ocorrencia || '',
+      severidade: (o.severidade || 'media') as typeof EMPTY_OCORRENCIA.severidade,
+      horas: o.horas != null ? String(o.horas) : '',
+      descricao: o.descricao || '',
+      acao_tomada: o.acao_tomada || '',
+      status: o.status as typeof EMPTY_OCORRENCIA.status,
+    })
+    setShowModal(true)
+  }
 
   const fetchData = async () => {
     setLoading(true)
@@ -80,7 +102,7 @@ export function OcorrenciasPage() {
     }
 
     setSaving(true)
-    const { error } = await supabase.from('ocorrencias').insert({
+    const payload = {
       colaborador_id: form.colaborador_id,
       tipo: form.tipo,
       data_ocorrencia: form.data_ocorrencia,
@@ -89,8 +111,10 @@ export function OcorrenciasPage() {
       descricao: form.descricao.trim(),
       acao_tomada: form.acao_tomada || null,
       status: form.status,
-      anexo_url: null,
-    })
+    }
+    const { error } = editing
+      ? await supabase.from('ocorrencias').update(payload).eq('id', editing.id)
+      : await supabase.from('ocorrencias').insert({ ...payload, anexo_url: null })
     setSaving(false)
 
     if (error) {
@@ -98,7 +122,8 @@ export function OcorrenciasPage() {
       return
     }
 
-    toast.success('Ocorrência registrada.')
+    toast.success(editing ? 'Ocorrência atualizada.' : 'Ocorrência registrada.')
+    setEditing(null)
     setForm({ ...EMPTY_OCORRENCIA })
     setShowModal(false)
     fetchData()
@@ -126,7 +151,7 @@ export function OcorrenciasPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar por colaborador, tipo ou descrição..." className="flex-1 min-w-[220px] max-w-md" />
-          <button className="btn-primary" onClick={() => setShowModal(true)}>
+          <button className="btn-primary" onClick={openNew}>
             <Plus size={16} />
             Nova Ocorrência
           </button>
@@ -154,7 +179,7 @@ export function OcorrenciasPage() {
               </thead>
               <tbody>
                 {filtered.map(o => (
-                  <tr key={o.id}>
+                  <tr key={o.id} className="cursor-pointer hover:bg-gray-50/80 transition-colors" onClick={() => openEdit(o)}>
                     <td>
                       <div className="flex items-center gap-3">
                         <Avatar name={o.colaborador?.nome || 'Colaborador'} photo={o.colaborador?.foto_url} size="sm" />
@@ -169,7 +194,7 @@ export function OcorrenciasPage() {
                     <td>{o.severidade || '-'}</td>
                     <td><Badge variant={statusVariant(o.status)}>{o.status}</Badge></td>
                     <td className="max-w-sm"><p className="line-clamp-2">{o.descricao}</p></td>
-                    <td>
+                    <td onClick={e => e.stopPropagation()}>
                       <button className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50" onClick={() => handleDelete(o.id)}>
                         <Trash2 size={15} />
                       </button>
@@ -182,13 +207,22 @@ export function OcorrenciasPage() {
         )}
       </div>
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Nova Ocorrência" maxWidth="max-w-2xl">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? 'Ocorrência' : 'Nova Ocorrência'} maxWidth="max-w-2xl">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
+          <div>
             <label className="label">Colaborador *</label>
             <select className="input" value={form.colaborador_id} onChange={e => setForm(p => ({ ...p, colaborador_id: e.target.value }))}>
               <option value="">Selecione</option>
               {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Status</label>
+            <select className="input" value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as typeof form.status }))}>
+              <option value="registrada">Registrada</option>
+              <option value="em_analise">Em análise</option>
+              <option value="resolvida">Resolvida</option>
+              <option value="cancelada">Cancelada</option>
             </select>
           </div>
           <div>
