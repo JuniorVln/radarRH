@@ -67,12 +67,20 @@ export function OcorrenciasPage() {
 
   const fetchData = async () => {
     setLoading(true)
+    // Join client-side: o banco real não tem a FK ocorrencias→colaboradores (embed do PostgREST falha)
     const [ocorrenciasRes, colaboradoresRes] = await Promise.all([
-      supabase.from('ocorrencias').select('*, colaborador:colaboradores(nome,cargo,foto_url)').order('data_ocorrencia', { ascending: false }),
-      supabase.from('colaboradores').select('*').eq('status', 'ativo').order('nome'),
+      supabase.from('ocorrencias').select('*').order('data_ocorrencia', { ascending: false }),
+      supabase.from('colaboradores').select('*').order('nome'),
     ])
-    if (ocorrenciasRes.data) setOcorrencias(ocorrenciasRes.data as OcorrenciaComColaborador[])
-    if (colaboradoresRes.data) setColaboradores(colaboradoresRes.data as Colaborador[])
+    if (ocorrenciasRes.error) toast.error('Erro ao carregar ocorrências.')
+    if (colaboradoresRes.error) toast.error('Erro ao carregar colaboradores.')
+    const todosColabs = (colaboradoresRes.data || []) as Colaborador[]
+    const byId = new Map(todosColabs.map(c => [c.id, c]))
+    setOcorrencias(((ocorrenciasRes.data || []) as Ocorrencia[]).map(o => {
+      const c = o.colaborador_id ? byId.get(o.colaborador_id) : undefined
+      return { ...o, colaborador: c ? { nome: c.nome, cargo: c.cargo, foto_url: c.foto_url } : null }
+    }))
+    setColaboradores(todosColabs.filter(c => c.status === 'ativo'))
     setLoading(false)
   }
 

@@ -200,15 +200,28 @@ export function DashboardPage() {
         setColaboradorNomeMap(nomeMap)
       }
 
-      // Admissões vêm da data_admissao dos colaboradores; demissões da tabela
-      // movimentacoes (gravada quando o status vira "demitido" no cadastro).
-      const { data: movs } = await supabase.from('movimentacoes').select('tipo, data').order('data', { ascending: true })
+      // Admissões: data_admissao dos colaboradores + movimentacoes tipo "admissao"
+      // (readmissões), deduplicadas por colaborador+data — o cadastro novo gera os dois.
+      // Demissões: tabela movimentacoes (gravada quando o status vira "demitido").
+      const { data: movs } = await supabase.from('movimentacoes').select('colaborador_id, tipo, data').order('data', { ascending: true })
       {
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
         const hoje = new Date()
-        const admissaoDates = ((cols || []) as ColaboradorDashboard[])
-          .map(c => parseLocalDate(c.data_admissao))
-          .filter(Boolean) as Date[]
+        const admissaoKeys = new Set<string>()
+        const admissaoDates: Date[] = []
+        ;((cols || []) as ColaboradorDashboard[]).forEach(c => {
+          if (!c.data_admissao) return
+          admissaoKeys.add(`${c.id}|${String(c.data_admissao).slice(0, 10)}`)
+          const d = parseLocalDate(c.data_admissao)
+          if (d) admissaoDates.push(d)
+        })
+        ;(movs || []).filter(mov => mov.tipo === 'admissao').forEach(mov => {
+          const key = `${mov.colaborador_id}|${String(mov.data).slice(0, 10)}`
+          if (admissaoKeys.has(key)) return
+          admissaoKeys.add(key)
+          const d = parseLocalDate(mov.data)
+          if (d) admissaoDates.push(d)
+        })
         const demissaoDates = (movs || [])
           .filter(mov => mov.tipo === 'demissao')
           .map(mov => parseLocalDate(mov.data))

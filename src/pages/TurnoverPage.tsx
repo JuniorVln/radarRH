@@ -43,33 +43,55 @@ export function TurnoverPage() {
     const headcount = colaboradores.filter(c => c.status === 'ativo').length
     const demissoesMovs = movimentacoes.filter(m => m.tipo === 'demissao')
 
-    const admissoes12m = colaboradores.filter(c => {
+    // Admissões: data_admissao + movimentacoes tipo "admissao" (readmissões),
+    // deduplicadas por colaborador+data — o cadastro novo gera os dois registros.
+    const admissaoKeys = new Set<string>()
+    const admissaoDates: Date[] = []
+    colaboradores.forEach(c => {
+      if (!c.data_admissao) return
+      admissaoKeys.add(`${c.id}|${String(c.data_admissao).slice(0, 10)}`)
       const d = parseLocalDate(c.data_admissao)
-      return d && d >= umAnoAtras
-    }).length
+      if (d) admissaoDates.push(d)
+    })
+    movimentacoes.filter(m => m.tipo === 'admissao').forEach(m => {
+      const key = `${m.colaborador_id}|${String(m.data).slice(0, 10)}`
+      if (admissaoKeys.has(key)) return
+      admissaoKeys.add(key)
+      const d = parseLocalDate(m.data)
+      if (d) admissaoDates.push(d)
+    })
 
+    const admissoes12m = admissaoDates.filter(d => d >= umAnoAtras).length
+
+    const demissaoDates = demissoesMovs.map(m => parseLocalDate(m.data)).filter(Boolean) as Date[]
     const demissoes12mList = demissoesMovs.filter(m => {
       const d = parseLocalDate(m.data)
       return d && d >= umAnoAtras
     })
     const demissoes12m = demissoes12mList.length
 
-    const turnover12m = headcount > 0 ? (demissoes12m / headcount) * 100 : 0
-
-    // Evolução mensal (últimos 12 meses terminando no mês atual)
-    const monthly: { mes: string; taxa: number; demissoes: number }[] = []
+    // Evolução mensal (últimos 12 meses). O headcount de cada mês é reconstruído
+    // de trás pra frente a partir do atual, usando os eventos de admissão/demissão.
+    const monthly: { mes: string; taxa: number; demissoes: number; headcount: number }[] = []
     for (let i = 11; i >= 0; i--) {
       const ref = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
-      const dems = demissoesMovs.filter(m => {
-        const d = parseLocalDate(m.data)
-        return d && d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth()
-      }).length
+      const fimMes = new Date(ref.getFullYear(), ref.getMonth() + 1, 1)
+      const headcountFimMes = Math.max(0,
+        headcount
+        - admissaoDates.filter(d => d >= fimMes).length
+        + demissaoDates.filter(d => d >= fimMes).length,
+      )
+      const dems = demissaoDates.filter(d => d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth()).length
       monthly.push({
         mes: `${MESES[ref.getMonth()]}${ref.getMonth() === 0 ? '/' + String(ref.getFullYear()).slice(2) : ''}`,
-        taxa: headcount > 0 ? Number(((dems / headcount) * 100).toFixed(2)) : 0,
+        taxa: headcountFimMes > 0 ? Number(((dems / headcountFimMes) * 100).toFixed(2)) : 0,
         demissoes: dems,
+        headcount: headcountFimMes,
       })
     }
+
+    const headcountMedio12m = monthly.reduce((acc, m) => acc + m.headcount, 0) / 12
+    const turnover12m = headcountMedio12m > 0 ? (demissoes12m / headcountMedio12m) * 100 : 0
 
     // Por setor e por tipo de contrato (via colaborador da movimentação)
     const porSetor: Record<string, number> = {}
@@ -82,7 +104,7 @@ export function TurnoverPage() {
       porTipo[tipo] = (porTipo[tipo] || 0) + 1
     })
 
-    return { headcount, admissoes12m, demissoes12m, turnover12m, monthly, porSetor, porTipo }
+    return { headcount, headcountMedio12m, admissoes12m, demissoes12m, turnover12m, monthly, porSetor, porTipo }
   }, [colaboradores, movimentacoes])
 
   const tiposContrato = ['CLT', 'Mensalista', 'Horista', 'Estagiário', 'PJ', 'Terceiro']
@@ -95,7 +117,7 @@ export function TurnoverPage() {
         <div>
           <p className="text-sm font-semibold text-indigo-900">Fórmula de cálculo</p>
           <p className="text-sm text-indigo-700 mt-0.5 font-mono">
-            Turnover (%) = (Nº Demissões ÷ Headcount) × 100
+            Turnover (%) = (Nº Demissões ÷ Headcount Médio) × 100
           </p>
           <p className="text-xs text-indigo-500 mt-1">
             As demissões são contabilizadas quando um colaborador é marcado como "Demitido" no cadastro.
@@ -114,7 +136,7 @@ export function TurnoverPage() {
         />
         <StatCard title="Admissões (12m)" value={loading ? '—' : String(computed.admissoes12m)} iconBg="bg-green-100" icon={<TrendingUp size={20} className="text-green-600" />} />
         <StatCard title="Demissões (12m)" value={loading ? '—' : String(computed.demissoes12m)} iconBg="bg-red-100" icon={<TrendingDown size={20} className="text-red-600" />} />
-        <StatCard title="Headcount Atual" value={loading ? '—' : String(computed.headcount)} iconBg="bg-indigo-100" icon={<Users size={20} className="text-indigo-600" />} />
+        <StatCard title="Headcount Atual" value={loading ? '—' : String(computed.headcount)} iconBg="bg-indigo-100" icon={<Users size={20} className="text-indigo-600" />} subtitle={loading ? undefined : `Médio 12m: ${computed.headcountMedio12m.toFixed(1).replace('.', ',')}`} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

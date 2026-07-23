@@ -55,14 +55,24 @@ export function HoleritesPage() {
 
   const fetchData = async () => {
     setLoading(true)
+    // Join client-side: o banco real não tem as FKs p/ o embed do PostgREST
     const [holeritesRes, informesRes, colaboradoresRes] = await Promise.all([
-      supabase.from('holerites').select('*, colaborador:colaboradores(nome,cargo,foto_url)').order('competencia', { ascending: false }),
-      supabase.from('informes_rendimentos').select('*, colaborador:colaboradores(nome,cargo,foto_url)').order('ano_base', { ascending: false }),
-      supabase.from('colaboradores').select('*').eq('status', 'ativo').order('nome'),
+      supabase.from('holerites').select('*').order('competencia', { ascending: false }),
+      supabase.from('informes_rendimentos').select('*').order('ano_base', { ascending: false }),
+      supabase.from('colaboradores').select('*').order('nome'),
     ])
-    if (holeritesRes.data) setHolerites(holeritesRes.data as HoleriteComColaborador[])
-    if (informesRes.data) setInformes(informesRes.data as InformeComColaborador[])
-    if (colaboradoresRes.data) setColaboradores(colaboradoresRes.data as Colaborador[])
+    if (holeritesRes.error) toast.error('Erro ao carregar holerites.')
+    if (informesRes.error) toast.error('Erro ao carregar informes.')
+    if (colaboradoresRes.error) toast.error('Erro ao carregar colaboradores.')
+    const todosColabs = (colaboradoresRes.data || []) as Colaborador[]
+    const byId = new Map(todosColabs.map(c => [c.id, c]))
+    const withColab = <T extends { colaborador_id?: string | null }>(rows: T[]) => rows.map(r => {
+      const c = r.colaborador_id ? byId.get(r.colaborador_id) : undefined
+      return { ...r, colaborador: c ? { nome: c.nome, cargo: c.cargo, foto_url: c.foto_url } : null }
+    })
+    setHolerites(withColab((holeritesRes.data || []) as Holerite[]))
+    setInformes(withColab((informesRes.data || []) as InformeRendimento[]))
+    setColaboradores(todosColabs.filter(c => c.status === 'ativo'))
     setLoading(false)
   }
 
