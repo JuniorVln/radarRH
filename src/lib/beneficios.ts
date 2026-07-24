@@ -58,131 +58,12 @@ export interface BeneficioTotais {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
-export const PERIODO_BENEFICIOS_MAIO_2026: BeneficioPeriodo = {
-  competencia: '2026-05',
-  periodoInicio: '2026-03-20',
-  periodoFim: '2026-04-19',
-  diasUteis: 20,
-  diasHomeOffice: 8,
-  feriadosNacionais: [],
-  feriadosRegionais: [
-    { data: '2026-04-17', localidade: 'Brochier', descricao: 'Feriado Brochier' },
-  ],
-}
-
-export const CONFERENCIA_PLANILHA_MAIO_2026 = [
-  {
-    empresa: 'Rede Ideia',
-    colaboradores: 35,
-    totalVr: 20303,
-    totalVt: 3779.8,
-    vtPorTransporte: {
-      BROCHIER: 0,
-      COMBUSTIVEL: 1646.8,
-      'HOME OFFICE': 0,
-      TEU: 871.6,
-      TRI: 1261.4,
-    },
-  },
-  {
-    empresa: 'Rede Gaucha',
-    colaboradores: 19,
-    totalVr: 10352,
-    totalVt: 3086.2,
-    vtPorTransporte: {
-      BROCHIER: 0,
-      COMBUSTIVEL: 1951.4,
-      'HOME OFFICE': 0,
-      TEU: 361,
-      TRI: 773.8,
-    },
-  },
-  {
-    empresa: 'Business',
-    colaboradores: 7,
-    totalVr: 4185,
-    totalVt: 751.2,
-    vtPorTransporte: {
-      COMBUSTIVEL: 212,
-      'HOME OFFICE': 0,
-      TEU: 200,
-      TRI: 339.2,
-    },
-  },
-  {
-    empresa: 'Prosperar',
-    colaboradores: 5,
-    totalVr: 3138,
-    totalVt: 965.6,
-    vtPorTransporte: {
-      COMBUSTIVEL: 747.6,
-      TEU: 218,
-    },
-  },
-] as const
-
-export const BENEFICIOS_MAIO_2026_AMOSTRA: BeneficioColaboradorInput[] = [
-  {
-    nome: 'DANIELLY RENATA HERZER',
-    empresa: 'Rede Ideia',
-    localidade: 'Brochier',
-    valorVrDiario: 31,
-    recebeFrutas: true,
-    valorFrutasMensal: 20,
-    transporte: 'BROCHIER',
-    diasUteisVr: 20,
-    diasUteisVt: 20,
-    diasFeriadosRegionais: 1,
-  },
-  {
-    nome: 'BRUNO DA SILVA CAMARA',
-    empresa: 'Rede Ideia',
-    valorVrDiario: 31,
-    transporte: 'HOME OFFICE',
-    diasUteisVr: 20,
-    diasUteisVt: 20,
-    diasFerias: 19,
-    diasFaltas: 1,
-  },
-  {
-    nome: 'CAROLINE KARNAL DOS SANTOS',
-    empresa: 'Rede Ideia',
-    valorVrDiario: 31,
-    transporte: 'COMBUSTIVEL',
-    valorVtDiario: 10.6,
-    diasUteisVr: 20,
-    diasUteisVt: 20,
-    diasHomeOffice: 8,
-  },
-  {
-    nome: 'AMANDA FRAGA EMERIM',
-    empresa: 'Rede Gaucha',
-    valorVrDiario: 31,
-    transporte: 'COMBUSTIVEL',
-    vtFixoMensal: 500,
-    diasUteisVr: 20,
-  },
-  {
-    nome: 'TAINARA PEREIRA DE OLIVEIRA',
-    empresa: 'Prosperar',
-    valorVrDiario: 31,
-    recebeFrutas: true,
-    valorFrutasMensal: 20,
-    transporte: 'TEU',
-    valorVtDiario: 21.8,
-    diasUteisVr: 20,
-    diasUteisVt: 20,
-    diasHomeOffice: 8,
-    diasAtestados: 2,
-  },
-]
-
-function parseLocalDate(date: string) {
+export function parseLocalDate(date: string) {
   const [year, month, day] = date.split('-').map(Number)
   return new Date(year, month - 1, day)
 }
 
-function formatLocalDate(date: Date) {
+export function formatLocalDate(date: Date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
@@ -231,9 +112,30 @@ export function contarDiasHomeOffice(inicio: string, fim: string, feriados: stri
   return total
 }
 
+/**
+ * Conta quantos dias de um intervalo de férias [gozoInicio, gozoInicio + diasGozo - 1]
+ * caem dentro do período de folha [periodoInicio, periodoFim].
+ */
+export function diasFeriasNoPeriodo(
+  gozoInicio: string,
+  diasGozo: number,
+  periodoInicio: string,
+  periodoFim: string
+) {
+  if (!gozoInicio || diasGozo <= 0) return 0
+  const inicioGozo = parseLocalDate(gozoInicio).getTime()
+  const fimGozo = inicioGozo + (diasGozo - 1) * MS_PER_DAY
+  const inicioPeriodo = parseLocalDate(periodoInicio).getTime()
+  const fimPeriodo = parseLocalDate(periodoFim).getTime()
+  const inicioOverlap = Math.max(inicioGozo, inicioPeriodo)
+  const fimOverlap = Math.min(fimGozo, fimPeriodo)
+  if (fimOverlap < inicioOverlap) return 0
+  return Math.round((fimOverlap - inicioOverlap) / MS_PER_DAY) + 1
+}
+
 export function calcularBeneficioColaborador(
   input: BeneficioColaboradorInput,
-  periodo: BeneficioPeriodo = PERIODO_BENEFICIOS_MAIO_2026
+  periodo: BeneficioPeriodo
 ): BeneficioColaboradorResultado {
   const diasUteisVr = input.diasUteisVr ?? periodo.diasUteis
   const diasUteisVt = input.diasUteisVt ?? periodo.diasUteis
