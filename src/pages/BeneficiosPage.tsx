@@ -320,6 +320,7 @@ export function BeneficiosPage() {
     <Layout title="Benefícios" subtitle="VR, VT e frutas calculados automaticamente a partir de Ocorrências e Férias">
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <select
+          aria-label="Competência"
           className="input w-auto"
           value={periodoId}
           onChange={e => trocarPeriodo(e.target.value)}
@@ -580,17 +581,17 @@ export function BeneficiosPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Valor final de VR</label>
-              <input className="input" type="number" step="0.01" value={formAjuste.ajuste_manual_vr} onChange={e => setFormAjuste(p => ({ ...p, ajuste_manual_vr: e.target.value }))} placeholder={ajusteAberto ? String(ajusteAberto.total_vr) : ''} />
+              <label className="label" htmlFor="ajuste-vr">Valor final de VR</label>
+              <input id="ajuste-vr" className="input" type="number" step="0.01" value={formAjuste.ajuste_manual_vr} onChange={e => setFormAjuste(p => ({ ...p, ajuste_manual_vr: e.target.value }))} placeholder={ajusteAberto ? String(ajusteAberto.total_vr) : ''} />
             </div>
             <div>
-              <label className="label">Valor final de VT</label>
-              <input className="input" type="number" step="0.01" value={formAjuste.ajuste_manual_vt} onChange={e => setFormAjuste(p => ({ ...p, ajuste_manual_vt: e.target.value }))} placeholder={ajusteAberto ? String(ajusteAberto.total_vt) : ''} />
+              <label className="label" htmlFor="ajuste-vt">Valor final de VT</label>
+              <input id="ajuste-vt" className="input" type="number" step="0.01" value={formAjuste.ajuste_manual_vt} onChange={e => setFormAjuste(p => ({ ...p, ajuste_manual_vt: e.target.value }))} placeholder={ajusteAberto ? String(ajusteAberto.total_vt) : ''} />
             </div>
           </div>
           <div>
-            <label className="label">Motivo</label>
-            <textarea className="input h-20 resize-none" value={formAjuste.motivo_ajuste} onChange={e => setFormAjuste(p => ({ ...p, motivo_ajuste: e.target.value }))} placeholder="Ex.: colaborador fez 1 dia extra de home office nesta competência" />
+            <label className="label" htmlFor="ajuste-motivo">Motivo</label>
+            <textarea id="ajuste-motivo" className="input h-20 resize-none" value={formAjuste.motivo_ajuste} onChange={e => setFormAjuste(p => ({ ...p, motivo_ajuste: e.target.value }))} placeholder="Ex.: colaborador fez 1 dia extra de home office nesta competência" />
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-gray-100">

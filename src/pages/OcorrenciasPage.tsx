@@ -218,8 +218,8 @@ export function OcorrenciasPage() {
       <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? 'Ocorrência' : 'Nova Ocorrência'} maxWidth="max-w-2xl">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="label">Colaborador *</label>
-            <select className="input" value={form.colaborador_id} onChange={e => setForm(p => ({ ...p, colaborador_id: e.target.value }))}>
+            <label className="label" htmlFor="ocorrencia-colaborador">Colaborador *</label>
+            <select id="ocorrencia-colaborador" className="input" value={form.colaborador_id} onChange={e => setForm(p => ({ ...p, colaborador_id: e.target.value }))}>
               <option value="">Selecione</option>
               {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
@@ -261,8 +261,8 @@ export function OcorrenciasPage() {
             <input className="input" type="number" step="0.25" value={form.horas} onChange={e => setForm(p => ({ ...p, horas: e.target.value }))} placeholder="Ex: 1.5" />
           </div>
           <div className="md:col-span-2">
-            <label className="label">Descrição *</label>
-            <textarea className="input h-24 resize-none" value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
+            <label className="label" htmlFor="ocorrencia-descricao">Descrição *</label>
+            <textarea id="ocorrencia-descricao" className="input h-24 resize-none" value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
           </div>
           <div className="md:col-span-2">
             <label className="label">Ação tomada</label>
