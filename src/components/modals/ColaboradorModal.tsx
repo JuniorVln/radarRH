@@ -406,12 +406,12 @@ export function ColaboradorModal({ open, onClose, onSaved, colaborador }: Props)
               <h4 className="text-sm font-semibold text-gray-900 border-b pb-2 mb-4">Informações Básicas</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
-                  <input type="text" className="input-field" value={form.nome} onChange={e => set('nome', e.target.value)} />
+                  <label htmlFor="colab-nome" className="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
+                  <input id="colab-nome" type="text" className="input-field" value={form.nome} onChange={e => set('nome', e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">CPF *</label>
-                  <input type="text" className="input-field" value={form.cpf} onChange={e => set('cpf', maskCPF(e.target.value))} maxLength={14} />
+                  <label htmlFor="colab-cpf" className="block text-sm font-medium text-gray-700 mb-1">CPF *</label>
+                  <input id="colab-cpf" type="text" className="input-field" value={form.cpf} onChange={e => set('cpf', maskCPF(e.target.value))} maxLength={14} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Nascimento</label>
@@ -562,16 +562,16 @@ export function ColaboradorModal({ open, onClose, onSaved, colaborador }: Props)
               <h4 className="text-sm font-semibold text-gray-900 border-b pb-2 mb-4">Vínculo com a Empresa</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cargo *</label>
-                  <input type="text" className="input-field" value={form.cargo} onChange={e => set('cargo', e.target.value)} />
+                  <label htmlFor="colab-cargo" className="block text-sm font-medium text-gray-700 mb-1">Cargo *</label>
+                  <input id="colab-cargo" type="text" className="input-field" value={form.cargo} onChange={e => set('cargo', e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Setor *</label>
-                  <input type="text" className="input-field" value={form.setor} onChange={e => set('setor', e.target.value)} />
+                  <label htmlFor="colab-setor" className="block text-sm font-medium text-gray-700 mb-1">Setor *</label>
+                  <input id="colab-setor" type="text" className="input-field" value={form.setor} onChange={e => set('setor', e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Contrato</label>
-                  <select className="input-field" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
+                  <label htmlFor="colab-tipo" className="block text-sm font-medium text-gray-700 mb-1">Tipo de Contrato</label>
+                  <select id="colab-tipo" className="input-field" value={form.tipo} onChange={e => set('tipo', e.target.value)}>
                     <option value="CLT">CLT</option>
                     <option value="Estagiário">Estagiário</option>
                     <option value="Terceiro">Terceiro</option>
@@ -593,16 +593,16 @@ export function ColaboradorModal({ open, onClose, onSaved, colaborador }: Props)
                   <input type="text" className="input-field" value={form.cnpj_unidade} onChange={e => set('cnpj_unidade', e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Data Admissão</label>
-                  <input type="date" className="input-field" value={form.data_admissao} onChange={e => set('data_admissao', e.target.value)} />
+                  <label htmlFor="colab-admissao" className="block text-sm font-medium text-gray-700 mb-1">Data Admissão</label>
+                  <input id="colab-admissao" type="date" className="input-field" value={form.data_admissao} onChange={e => set('data_admissao', e.target.value)} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Salário (R$)</label>
                   <input type="number" className="input-field" value={form.salario} onChange={e => set('salario', e.target.value)} step="0.01" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select className="input-field" value={form.status} onChange={e => set('status', e.target.value)}>
+                  <label htmlFor="colab-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select id="colab-status" className="input-field" value={form.status} onChange={e => set('status', e.target.value)}>
                     <option value="ativo">Ativo</option>
                     <option value="inativo">Inativo</option>
                     <option value="demitido">Demitido</option>
