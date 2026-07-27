@@ -2,6 +2,9 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
+  // O smoke visual tem config propria (playwright.smoke.config.ts) — grava video,
+  // nao para na primeira falha e gera relatorio de prints.
+  testIgnore: /smoke\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   reporter: 'list',
