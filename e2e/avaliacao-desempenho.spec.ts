@@ -44,6 +44,15 @@ test('cria ciclo para todos os ativos, preenche avaliacao e gerencia PDI', async
   await expect(fecharModal).toBeVisible()
 
   // ---------- CRIAR CICLO ----------
+  // O modal so consegue criar o ciclo depois que a lista de colaboradores carregou:
+  // com a lista vazia o app recusa com "Nao ha colaboradores ativos para avaliar" e o
+  // modal fica aberto. Local carrega antes de eu clicar; no CI nao — foi assim que
+  // este teste reprovou la. Esperar a contagem do modal resolve E confere de quebra
+  // que a tela enxerga os mesmos ativos que o banco tem.
+  await expect(
+    page.getByText(new RegExp(`O ciclo será criado para ${ativos!.length} colaborador`)),
+  ).toBeVisible({ timeout: 20000 })
+
   await page.getByLabel('Nome do ciclo *').fill(CICLO)
   await page.getByLabel('Data de início *').fill('2026-08-01')
   await page.getByLabel('Data de encerramento *').fill('2026-08-31')

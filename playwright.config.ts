@@ -7,11 +7,15 @@ export default defineConfig({
   testIgnore: /(smoke|visual)\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
-  reporter: 'list',
+  // O html vai junto porque o workflow sobe playwright-report/ como artefato quando
+  // falha — sem ele, uma falha que so acontece no CI fica sem print, video nem trace.
+  reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   timeout: 30000,
   use: {
     baseURL: 'http://localhost:5173',
     screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    trace: 'retain-on-failure',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
