@@ -32,4 +32,6 @@ dist-ssr
 test-results/
 playwright-report/
 smoke-report/
+visual-report/
+test-results-visual/
 .playwright-mcp/
