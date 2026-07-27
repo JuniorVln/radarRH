@@ -48,7 +48,10 @@ test('cria ciclo para todos os ativos, preenche avaliacao e gerencia PDI', async
   await page.getByLabel('Data de início *').fill('2026-08-01')
   await page.getByLabel('Data de encerramento *').fill('2026-08-31')
   await page.getByRole('button', { name: 'Criar Ciclo' }).click()
-  await expect(fecharModal).toHaveCount(0)
+  // Este save insere UMA avaliacao por colaborador ativo (66+ linhas num INSERT so).
+  // No runner do CI isso passa dos 5s padrao do expect — nao e lentidao da tela,
+  // e o volume mesmo. Local roda em ~1s.
+  await expect(fecharModal).toHaveCount(0, { timeout: 30000 })
   await expect(page.getByText('Ciclo criado para colaboradores ativos.').first()).toBeVisible()
 
   const { data: criadas } = await supabaseTest
