@@ -476,37 +476,37 @@ export function AvaliacaoDesempenhoPage() {
       <Modal open={showNovoPDI} onClose={() => setShowNovoPDI(false)} title="Novo PDI">
         <div className="space-y-4">
           <div>
-            <label className="label">Colaborador *</label>
-            <select className="input" value={formPDI.colaborador_id} onChange={e => setFormPDI(p => ({ ...p, colaborador_id: e.target.value }))}>
+            <label className="label" htmlFor="pdi-colaborador">Colaborador *</label>
+            <select id="pdi-colaborador" className="input" value={formPDI.colaborador_id} onChange={e => setFormPDI(p => ({ ...p, colaborador_id: e.target.value }))}>
               <option value="">Selecione um colaborador</option>
               {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Título *</label>
-            <input className="input" placeholder="Ex: Desenvolvimento de liderança" value={formPDI.titulo} onChange={e => setFormPDI(p => ({ ...p, titulo: e.target.value }))} />
+            <label className="label" htmlFor="pdi-titulo">Título *</label>
+            <input id="pdi-titulo" className="input" placeholder="Ex: Desenvolvimento de liderança" value={formPDI.titulo} onChange={e => setFormPDI(p => ({ ...p, titulo: e.target.value }))} />
           </div>
           <div>
-            <label className="label">Objetivo *</label>
-            <input className="input" placeholder="Ex: Preparar para coordenação de equipe" value={formPDI.objetivo} onChange={e => setFormPDI(p => ({ ...p, objetivo: e.target.value }))} />
+            <label className="label" htmlFor="pdi-objetivo">Objetivo *</label>
+            <input id="pdi-objetivo" className="input" placeholder="Ex: Preparar para coordenação de equipe" value={formPDI.objetivo} onChange={e => setFormPDI(p => ({ ...p, objetivo: e.target.value }))} />
           </div>
           <div>
-            <label className="label">Ações previstas</label>
-            <textarea className="input h-24 resize-none" placeholder="Ex: Curso, mentoria, acompanhamento mensal..." value={formPDI.descricao} onChange={e => setFormPDI(p => ({ ...p, descricao: e.target.value }))} />
+            <label className="label" htmlFor="pdi-acoes">Ações previstas</label>
+            <textarea id="pdi-acoes" className="input h-24 resize-none" placeholder="Ex: Curso, mentoria, acompanhamento mensal..." value={formPDI.descricao} onChange={e => setFormPDI(p => ({ ...p, descricao: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Início *</label>
-              <input className="input" type="date" value={formPDI.data_inicio} onChange={e => setFormPDI(p => ({ ...p, data_inicio: e.target.value }))} />
+              <label className="label" htmlFor="pdi-inicio">Início *</label>
+              <input id="pdi-inicio" className="input" type="date" value={formPDI.data_inicio} onChange={e => setFormPDI(p => ({ ...p, data_inicio: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Fim previsto</label>
-              <input className="input" type="date" value={formPDI.data_fim} onChange={e => setFormPDI(p => ({ ...p, data_fim: e.target.value }))} />
+              <label className="label" htmlFor="pdi-fim">Fim previsto</label>
+              <input id="pdi-fim" className="input" type="date" value={formPDI.data_fim} onChange={e => setFormPDI(p => ({ ...p, data_fim: e.target.value }))} />
             </div>
           </div>
           <div>
-            <label className="label">Status</label>
-            <select className="input" value={formPDI.status} onChange={e => setFormPDI(p => ({ ...p, status: e.target.value as typeof formPDI.status }))}>
+            <label className="label" htmlFor="pdi-status">Status</label>
+            <select id="pdi-status" className="input" value={formPDI.status} onChange={e => setFormPDI(p => ({ ...p, status: e.target.value as typeof formPDI.status }))}>
               {STATUS_PDI.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
@@ -523,17 +523,17 @@ export function AvaliacaoDesempenhoPage() {
       <Modal open={showNovo} onClose={() => setShowNovo(false)} title="Novo Ciclo de Avaliação">
         <div className="space-y-4">
           <div>
-            <label className="label">Nome do ciclo *</label>
-            <input className="input" placeholder="Ex: Avaliação 1º Semestre 2026" value={formCiclo.ciclo} onChange={e => setFormCiclo(p => ({ ...p, ciclo: e.target.value }))} />
+            <label className="label" htmlFor="ciclo-nome">Nome do ciclo *</label>
+            <input id="ciclo-nome" className="input" placeholder="Ex: Avaliação 1º Semestre 2026" value={formCiclo.ciclo} onChange={e => setFormCiclo(p => ({ ...p, ciclo: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Data de início *</label>
-              <input className="input" type="date" value={formCiclo.data_inicio} onChange={e => setFormCiclo(p => ({ ...p, data_inicio: e.target.value }))} />
+              <label className="label" htmlFor="ciclo-inicio">Data de início *</label>
+              <input id="ciclo-inicio" className="input" type="date" value={formCiclo.data_inicio} onChange={e => setFormCiclo(p => ({ ...p, data_inicio: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Data de encerramento *</label>
-              <input className="input" type="date" value={formCiclo.data_fim} onChange={e => setFormCiclo(p => ({ ...p, data_fim: e.target.value }))} />
+              <label className="label" htmlFor="ciclo-fim">Data de encerramento *</label>
+              <input id="ciclo-fim" className="input" type="date" value={formCiclo.data_fim} onChange={e => setFormCiclo(p => ({ ...p, data_fim: e.target.value }))} />
             </div>
           </div>
           <div className="bg-gray-50 border border-gray-100 rounded-lg p-3 text-sm text-gray-600">

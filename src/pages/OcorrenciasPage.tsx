@@ -225,8 +225,8 @@ export function OcorrenciasPage() {
             </select>
           </div>
           <div>
-            <label className="label">Status</label>
-            <select className="input" value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as typeof form.status }))}>
+            <label className="label" htmlFor="ocorrencia-status">Status</label>
+            <select id="ocorrencia-status" className="input" value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as typeof form.status }))}>
               <option value="registrada">Registrada</option>
               <option value="em_analise">Em análise</option>
               <option value="resolvida">Resolvida</option>
@@ -234,8 +234,8 @@ export function OcorrenciasPage() {
             </select>
           </div>
           <div>
-            <label className="label">Tipo</label>
-            <select className="input" value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value as typeof form.tipo }))}>
+            <label className="label" htmlFor="ocorrencia-tipo">Tipo</label>
+            <select id="ocorrencia-tipo" className="input" value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value as typeof form.tipo }))}>
               <option value="advertencia">Advertência</option>
               <option value="falta">Falta</option>
               <option value="atraso">Atraso</option>
@@ -245,28 +245,28 @@ export function OcorrenciasPage() {
             </select>
           </div>
           <div>
-            <label className="label">Data *</label>
-            <input className="input" type="date" value={form.data_ocorrencia} onChange={e => setForm(p => ({ ...p, data_ocorrencia: e.target.value }))} />
+            <label className="label" htmlFor="ocorrencia-data">Data *</label>
+            <input id="ocorrencia-data" className="input" type="date" value={form.data_ocorrencia} onChange={e => setForm(p => ({ ...p, data_ocorrencia: e.target.value }))} />
           </div>
           <div>
-            <label className="label">Severidade</label>
-            <select className="input" value={form.severidade} onChange={e => setForm(p => ({ ...p, severidade: e.target.value as typeof form.severidade }))}>
+            <label className="label" htmlFor="ocorrencia-severidade">Severidade</label>
+            <select id="ocorrencia-severidade" className="input" value={form.severidade} onChange={e => setForm(p => ({ ...p, severidade: e.target.value as typeof form.severidade }))}>
               <option value="baixa">Baixa</option>
               <option value="media">Média</option>
               <option value="alta">Alta</option>
             </select>
           </div>
           <div>
-            <label className="label">Horas</label>
-            <input className="input" type="number" step="0.25" value={form.horas} onChange={e => setForm(p => ({ ...p, horas: e.target.value }))} placeholder="Ex: 1.5" />
+            <label className="label" htmlFor="ocorrencia-horas">Horas</label>
+            <input id="ocorrencia-horas" className="input" type="number" step="0.25" value={form.horas} onChange={e => setForm(p => ({ ...p, horas: e.target.value }))} placeholder="Ex: 1.5" />
           </div>
           <div className="md:col-span-2">
             <label className="label" htmlFor="ocorrencia-descricao">Descrição *</label>
             <textarea id="ocorrencia-descricao" className="input h-24 resize-none" value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
           </div>
           <div className="md:col-span-2">
-            <label className="label">Ação tomada</label>
-            <textarea className="input h-20 resize-none" value={form.acao_tomada} onChange={e => setForm(p => ({ ...p, acao_tomada: e.target.value }))} />
+            <label className="label" htmlFor="ocorrencia-acao">Ação tomada</label>
+            <textarea id="ocorrencia-acao" className="input h-20 resize-none" value={form.acao_tomada} onChange={e => setForm(p => ({ ...p, acao_tomada: e.target.value }))} />
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-gray-100">

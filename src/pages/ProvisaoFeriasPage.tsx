@@ -261,30 +261,30 @@ export function ProvisaoFeriasPage() {
       <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? 'Férias' : 'Programar Férias'}>
         <div className="space-y-4">
           <div>
-            <label className="label">Colaborador *</label>
-            <select className="input" value={form.colaborador_id} onChange={e => setForm(p => ({ ...p, colaborador_id: e.target.value }))}>
+            <label className="label" htmlFor="ferias-colaborador">Colaborador *</label>
+            <select id="ferias-colaborador" className="input" value={form.colaborador_id} onChange={e => setForm(p => ({ ...p, colaborador_id: e.target.value }))}>
               <option value="">Selecione o colaborador</option>
               {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Período Aquisitivo — Início *</label>
-              <input className="input" type="date" value={form.periodo_aquisitivo_inicio} onChange={e => setInicioAquisitivo(e.target.value)} />
+              <label className="label" htmlFor="ferias-aquisitivo-inicio">Período Aquisitivo — Início *</label>
+              <input id="ferias-aquisitivo-inicio" className="input" type="date" value={form.periodo_aquisitivo_inicio} onChange={e => setInicioAquisitivo(e.target.value)} />
             </div>
             <div>
-              <label className="label">Período Aquisitivo — Fim *</label>
-              <input className="input" type="date" value={form.periodo_aquisitivo_fim} onChange={e => setForm(p => ({ ...p, periodo_aquisitivo_fim: e.target.value }))} />
+              <label className="label" htmlFor="ferias-aquisitivo-fim">Período Aquisitivo — Fim *</label>
+              <input id="ferias-aquisitivo-fim" className="input" type="date" value={form.periodo_aquisitivo_fim} onChange={e => setForm(p => ({ ...p, periodo_aquisitivo_fim: e.target.value }))} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Vencimento (limite p/ gozo)</label>
-              <input className="input" type="date" value={form.vencimento} onChange={e => setForm(p => ({ ...p, vencimento: e.target.value }))} />
+              <label className="label" htmlFor="ferias-vencimento">Vencimento (limite p/ gozo)</label>
+              <input id="ferias-vencimento" className="input" type="date" value={form.vencimento} onChange={e => setForm(p => ({ ...p, vencimento: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Status</label>
-              <select className="input" value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as Ferias['status'] }))}>
+              <label className="label" htmlFor="ferias-status">Status</label>
+              <select id="ferias-status" className="input" value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as Ferias['status'] }))}>
                 <option value="pendente">Pendente</option>
                 <option value="programada">Programada</option>
                 <option value="gozada">Gozada</option>
@@ -294,12 +294,12 @@ export function ProvisaoFeriasPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Início do Gozo</label>
-              <input className="input" type="date" value={form.gozo_programado} onChange={e => setForm(p => ({ ...p, gozo_programado: e.target.value }))} />
+              <label className="label" htmlFor="ferias-gozo">Início do Gozo</label>
+              <input id="ferias-gozo" className="input" type="date" value={form.gozo_programado} onChange={e => setForm(p => ({ ...p, gozo_programado: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Nº de Dias</label>
-              <input className="input" type="number" min="1" max="30" value={form.dias} onChange={e => setForm(p => ({ ...p, dias: e.target.value }))} />
+              <label className="label" htmlFor="ferias-dias">Nº de Dias</label>
+              <input id="ferias-dias" className="input" type="number" min="1" max="30" value={form.dias} onChange={e => setForm(p => ({ ...p, dias: e.target.value }))} />
             </div>
           </div>
         </div>
