@@ -22,6 +22,7 @@ import { PerfilComportamentalPage } from './pages/PerfilComportamentalPage'
 import { ConfiguracoesPage } from './pages/ConfiguracoesPage'
 import { IntegracoesPage } from './pages/IntegracoesPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { DiscQuestionarioPage } from './pages/DiscQuestionarioPage'
 
 export default function App() {
   return (
@@ -47,6 +48,9 @@ export default function App() {
         <Route path="/perfil-comportamental" element={<PerfilComportamentalPage />} />
         <Route path="/integracoes" element={<IntegracoesPage />} />
         <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+        {/* Publica, sem Layout: quem responde e o colaborador/candidato, que nao pode
+            ver o menu do RH nem os dados de mais ninguem. */}
+        <Route path="/disc/:token" element={<DiscQuestionarioPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

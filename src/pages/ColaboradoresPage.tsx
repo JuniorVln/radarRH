@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Layout } from '../components/layout/Layout'
-import { Users, Plus, Grid, List, BarChart2, Trash2, Pencil } from 'lucide-react'
+import { Users, Plus, Grid, List, BarChart2, Trash2, Pencil, Brain } from 'lucide-react'
 import { Badge, Modal, EmptyState, Avatar, SearchInput } from '../components/ui'
 import { DISC_COLORS, formatDate } from '../lib/utils'
 import type { Colaborador } from '../lib/supabase'
@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase'
 import { ColaboradorModal } from '../components/modals/ColaboradorModal'
 import { NineBoxModal } from '../components/modals/NineBoxModal'
 import { AnaliseComportamentalModal } from '../components/modals/AnaliseComportamentalModal'
+import { DiscModal } from '../components/modals/DiscModal'
 import toast from 'react-hot-toast'
 
 type ViewMode = 'table' | 'grid'
@@ -24,6 +25,7 @@ export function ColaboradoresPage() {
   const [showAnalise, setShowAnalise] = useState(false)
   const [filterTipo, setFilterTipo] = useState('todos')
   const [confirmDelete, setConfirmDelete] = useState<Colaborador | null>(null)
+  const [discDe, setDiscDe] = useState<Colaborador | null>(null)
 
   // Contratacao vinda do Recrutamento: o card do candidato navega pra ca com os dados
   // dele no state da rota. Abrimos o cadastro ja preenchido e so movemos o candidato
@@ -255,6 +257,9 @@ export function ColaboradoresPage() {
                       </td>
                       <td onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setDiscDe(c)} className="text-gray-400 hover:text-purple-600 p-1.5 rounded hover:bg-purple-50 transition" title="DISC">
+                            <Brain size={15} />
+                          </button>
                           <button onClick={() => handleEdit(c)} className="text-gray-400 hover:text-indigo-600 p-1.5 rounded hover:bg-indigo-50 transition" title="Editar">
                             <Pencil size={15} />
                           </button>
@@ -282,6 +287,13 @@ export function ColaboradoresPage() {
       />
       
       <NineBoxModal open={showNineBox} onClose={() => setShowNineBox(false)} colaboradores={filtered} />
+      <DiscModal
+        open={!!discDe}
+        onClose={() => { setDiscDe(null); fetchColaboradores() }}
+        colaboradorId={discDe?.id}
+        nome={discDe?.nome || ''}
+      />
+
       <AnaliseComportamentalModal open={showAnalise} onClose={() => setShowAnalise(false)} colaboradores={filtered} />
 
       {/* Confirm Delete */}
