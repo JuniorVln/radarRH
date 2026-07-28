@@ -35,3 +35,6 @@ smoke-report/
 visual-report/
 test-results-visual/
 .playwright-mcp/
+
+.vercel
+.env*

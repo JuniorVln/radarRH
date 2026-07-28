@@ -19,10 +19,16 @@
 // variável SITE_SENHA nas configurações do projeto no Vercel.
 
 export const config = {
-  // Deixa passar só o que não é página: assets e favicon. Todo o resto pede senha,
-  // inclusive /disc/<token> — hoje ninguém de fora foi convidado ainda, então é
-  // mais seguro travar tudo do que abrir exceção e esquecer dela aberta depois.
-  matcher: '/((?!favicon.ico|robots.txt).*)',
+  // Todo o sistema pede senha, inclusive /disc/<token> — ninguém de fora foi
+  // convidado ainda, então é mais seguro travar tudo do que abrir exceção e
+  // esquecer dela aberta depois.
+  //
+  // O portal de vagas e as funcoes que ele usa ficam FORA da trava — sao publicos
+  // por natureza. Isso e seguro porque a pagina do portal nao carrega o bundle do
+  // sistema e nao conhece a chave do Supabase: ela fala com /api/vagas e
+  // /api/candidatura, que rodam no servidor. Se um dia o portal passar a importar o
+  // app, esta excecao PRECISA sair junto.
+  matcher: '/((?!favicon.ico|robots.txt|vagas|vagas.html|api/vagas|api/candidatura).*)',
 }
 
 export default function middleware(request) {

@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trabalhe na Rede Ideia — Vagas abertas</title>
+<meta name="description" content="Vagas abertas na Rede Ideia. Candidate-se e faça parte do time.">
+<link rel="icon" href="/favicon.svg">
+<!--
+  Portal PÚBLICO de vagas.
+
+  Página propositalmente independente do sistema de RH: não carrega o bundle do app
+  e não conhece a chave do Supabase. Tudo passa por /api/vagas e /api/candidatura,
+  que rodam no servidor. Se ela importasse o app, a chave do banco iria junto para o
+  navegador de qualquer visitante.
+
+  Sem framework e sem dependência externa de propósito — carrega rápido, não quebra
+  por CDN fora do ar e não tem nada para vazar.
+-->
+<style>
+  :root {
+    --tinta: #14171f; --suave: #5b6472; --linha: #e5e7eb;
+    --fundo: #f7f8fa; --marca: #4f46e5; --marca-escura: #4338ca;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--fundo); color: var(--tinta);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .faixa { background: #fff; border-bottom: 1px solid var(--linha); }
+  .caixa { max-width: 780px; margin: 0 auto; padding: 0 20px; }
+  header .caixa { padding-top: 40px; padding-bottom: 40px; }
+  h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .sub { color: var(--suave); margin: 0; }
+  main { padding: 32px 0 64px; }
+  .vaga {
+    background: #fff; border: 1px solid var(--linha); border-radius: 14px;
+    padding: 20px; margin-bottom: 14px; cursor: pointer; transition: .15s;
+  }
+  .vaga:hover { border-color: #c7d2fe; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+  .vaga h2 { font-size: 18px; margin: 0 0 6px; }
+  .etiquetas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .etiqueta {
+    font-size: 12px; background: #eef2ff; color: #4338ca;
+    padding: 3px 9px; border-radius: 999px;
+  }
+  .painel { background: #fff; border: 1px solid var(--linha); border-radius: 14px; padding: 24px; }
+  .painel h2 { margin-top: 0; }
+  .bloco { margin: 20px 0; }
+  .bloco h3 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); margin: 0 0 6px; }
+  .bloco p { margin: 0; white-space: pre-wrap; }
+  label { display: block; font-size: 14px; font-weight: 600; margin: 14px 0 5px; }
+  input, textarea {
+    width: 100%; padding: 11px 13px; border: 1px solid #d1d5db; border-radius: 9px;
+    font: inherit; background: #fff;
+  }
+  input:focus, textarea:focus { outline: 2px solid var(--marca); outline-offset: -1px; border-color: var(--marca); }
+  textarea { min-height: 96px; resize: vertical; }
+  .dica { font-size: 13px; color: var(--suave); margin-top: 4px; }
+  button {
+    background: var(--marca); color: #fff; border: 0; border-radius: 9px;
+    padding: 12px 22px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button:hover { background: var(--marca-escura); }
+  button:disabled { opacity: .6; cursor: default; }
+  .secundario { background: #fff; color: var(--tinta); border: 1px solid #d1d5db; }
+  .secundario:hover { background: #f3f4f6; }
+  .aviso { padding: 12px 14px; border-radius: 9px; margin: 16px 0; font-size: 14px; }
+  .erro { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .certo { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .vazio { text-align: center; color: var(--suave); padding: 48px 0; }
+  .armadilha { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  footer { text-align: center; color: var(--suave); font-size: 13px; padding: 28px 0 40px; }
+</style>
+</head>
+<body>
+
+<header class="faixa">
+  <div class="caixa">
+    <h1>Trabalhe na Rede Ideia</h1>
+    <p class="sub">Veja as vagas abertas e candidate-se. É rápido.</p>
+  </div>
+</header>
+
+<main class="caixa">
+  <div id="conteudo"><p class="vazio">Carregando vagas...</p></div>
+</main>
+
+<footer>Rede Ideia · Recursos Humanos</footer>
+
+<script>
+const conteudo = document.getElementById('conteudo')
+
+const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))
+
+function etiquetas(v) {
+  return [v.nivel, v.tipo_contrato, v.modelo_trabalho, v.localidade, v.setor]
+    .filter(Boolean)
+    .map(t => `<span class="etiqueta">${esc(t)}</span>`)
+    .join('')
+}
+
+async function listar() {
+  conteudo.innerHTML = '<p class="vazio">Carregando vagas...</p>'
+  try {
+    const r = await fetch('/api/vagas')
+    const d = await r.json()
+    if (!r.ok) throw new Error(d.erro)
+
+    if (!d.vagas.length) {
+      conteudo.innerHTML =
+        '<div class="painel"><p class="vazio">Nenhuma vaga aberta no momento.<br>' +
+        'Volte em breve — publicamos as oportunidades por aqui.</p></div>'
+      return
+    }
+
+    conteudo.innerHTML = d.vagas.map(v => `
+      <article class="vaga" data-id="${esc(v.id)}" tabindex="0" role="button">
+        <h2>${esc(v.titulo)}</h2>
+        ${v.numero_vagas > 1 ? `<p class="sub">${v.numero_vagas} posições</p>` : ''}
+        <div class="etiquetas">${etiquetas(v)}</div>
+      </article>
+    `).join('')
+
+    conteudo.querySelectorAll('.vaga').forEach(el => {
+      const abrir = () => abrirVaga(el.dataset.id)
+      el.addEventListener('click', abrir)
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') abrir() })
+    })
+  } catch (e) {
+    conteudo.innerHTML = '<div class="aviso erro">Não foi possível carregar as vagas. Tente de novo em instantes.</div>'
+  }
+}
+
+async function abrirVaga(id) {
+  conteudo.innerHTML = '<p class="vazio">Carregando...</p>'
+  try {
+    const r = await fetch('/api/vagas?id=' + encodeURIComponent(id))
+    const d = await r.json()
+    if (!r.ok) throw new Error(d.erro)
+    const v = d.vaga
+
+    const secao = (titulo, texto) =>
+      texto ? `<div class="bloco"><h3>${titulo}</h3><p>${esc(texto)}</p></div>` : ''
+
+    conteudo.innerHTML = `
+      <button class="secundario" id="voltar" style="margin-bottom:16px">← Todas as vagas</button>
+      <div class="painel">
+        <h2>${esc(v.titulo)}</h2>
+        <div class="etiquetas">${etiquetas(v)}</div>
+        ${secao('Sobre a vaga', v.descricao)}
+        ${secao('Requisitos', v.requisitos)}
+        ${secao('Benefícios', v.beneficios)}
+
+        <hr style="border:0;border-top:1px solid var(--linha);margin:26px 0">
+        <h3 style="margin:0 0 4px">Candidatar-se</h3>
+        <p class="dica" style="margin-bottom:8px">Leva menos de um minuto.</p>
+
+        <form id="formulario" novalidate>
+          <div class="armadilha" aria-hidden="true">
+            <label for="site">Não preencha este campo</label>
+            <input id="site" name="site" type="text" tabindex="-1" autocomplete="off">
+          </div>
+
+          <label for="nome">Nome completo *</label>
+          <input id="nome" name="nome" required autocomplete="name">
+
+          <label for="email">E-mail *</label>
+          <input id="email" name="email" type="email" required autocomplete="email">
+
+          <label for="telefone">Telefone / WhatsApp *</label>
+          <input id="telefone" name="telefone" required autocomplete="tel">
+
+          <label for="curriculo">Link do currículo ou LinkedIn</label>
+          <input id="curriculo" name="curriculo" type="url" placeholder="https://...">
+          <p class="dica">Opcional. Pode ser o seu perfil no LinkedIn.</p>
+
+          <label for="mensagem">Por que você quer esta vaga?</label>
+          <textarea id="mensagem" name="mensagem" placeholder="Opcional"></textarea>
+
+          <div id="retorno"></div>
+          <button type="submit" id="enviar" style="margin-top:16px">Enviar candidatura</button>
+        </form>
+      </div>
+    `
+
+    document.getElementById('voltar').addEventListener('click', listar)
+    document.getElementById('formulario').addEventListener('submit', ev => enviar(ev, v.id))
+  } catch (e) {
+    conteudo.innerHTML = '<div class="aviso erro">Vaga não encontrada ou já encerrada.</div>'
+  }
+}
+
+async function enviar(ev, vagaId) {
+  ev.preventDefault()
+  const form = ev.target
+  const botao = document.getElementById('enviar')
+  const retorno = document.getElementById('retorno')
+
+  retorno.innerHTML = ''
+  botao.disabled = true
+  botao.textContent = 'Enviando...'
+
+  const dados = Object.fromEntries(new FormData(form))
+  dados.vaga_id = vagaId
+
+  try {
+    const r = await fetch('/api/candidatura', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados),
+    })
+    const d = await r.json()
+
+    if (!r.ok) {
+      retorno.innerHTML = `<div class="aviso erro">${esc(d.erro || 'Não foi possível enviar.')}</div>`
+      botao.disabled = false
+      botao.textContent = 'Enviar candidatura'
+      return
+    }
+
+    form.innerHTML = d.jaInscrito
+      ? '<div class="aviso certo">Você já está inscrito nesta vaga. Estamos com o seu contato!</div>'
+      : '<div class="aviso certo">Candidatura enviada! Se o perfil combinar, o RH entra em contato.</div>'
+  } catch (e) {
+    retorno.innerHTML = '<div class="aviso erro">Falha de conexão. Tente de novo.</div>'
+    botao.disabled = false
+    botao.textContent = 'Enviar candidatura'
+  }
+}
+
+listar()
+</script>
+</body>
+</html>
