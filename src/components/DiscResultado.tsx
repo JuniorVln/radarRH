@@ -28,6 +28,18 @@ function Barra({ dim, valor, destaque }: { dim: DimensaoDisc; valor: number; des
  * entre eles que interessa numa conversa de desenvolvimento, não o número isolado.
  */
 export function DiscResultado({ resultado }: { resultado: ResultadoDisc }) {
+  // Resultado gravado por uma versao antiga do calculo (ou truncado) nao pode
+  // derrubar a tela inteira: sem esta guarda, faltar `natural` virava tela branca
+  // para o colaborador, que nao tem como saber o que aconteceu.
+  if (!resultado?.natural || !resultado?.adaptado) {
+    return (
+      <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-800">
+        Este resultado foi registrado num formato antigo e não pode ser exibido.
+        Aplique o questionário novamente para gerar um perfil completo.
+      </div>
+    )
+  }
+
   const { primario, secundario, adaptado, natural, tensaoDeAdaptacao, completo, respondidas } = resultado
 
   const tensaoAlta = tensaoDeAdaptacao >= 20

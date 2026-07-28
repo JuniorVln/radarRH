@@ -73,7 +73,32 @@ export async function buscarPorToken(token: string): Promise<AvaliacaoDisc | nul
     .select('*')
     .eq('token', token)
     .maybeSingle()
-  return (data as AvaliacaoDisc) || null
+
+  const avaliacao = (data as AvaliacaoDisc) || null
+
+  // Link cancelado nao pode abrir o questionario. Trata como inexistente aqui, para
+  // que a pagina publica caia na tela de link invalido sem precisar saber a regra.
+  if (avaliacao?.status === 'cancelado') return null
+
+  return avaliacao
+}
+
+/** Encerra a avaliacao pendente de alguem, para poder emitir um link novo. */
+export async function cancelarPendentes(alvo: {
+  colaboradorId?: string
+  candidatoId?: string
+}): Promise<void> {
+  const coluna = alvo.colaboradorId ? 'colaborador_id' : 'candidato_id'
+  const valor = alvo.colaboradorId || alvo.candidatoId
+  if (!valor) return
+
+  const { error } = await supabase
+    .from('disc_avaliacoes')
+    .update({ status: 'cancelado' })
+    .eq(coluna, valor)
+    .eq('status', 'pendente')
+
+  if (error) throw new Error(error.message)
 }
 
 export async function listarDoColaborador(colaboradorId: string): Promise<AvaliacaoDisc[]> {
@@ -95,7 +120,31 @@ export async function finalizarAvaliacao(
 ): Promise<ResultadoDisc> {
   const resultado = calcularDisc(respostas, TETRADES.length)
 
-  const { error } = await supabase
+  // ORDEM IMPORTA, e ela e o que garante que nao existe "meio salvo".
+  //
+  // 1o) perfil_disc no colaborador/candidato. Se falhar aqui, a avaliacao continua
+  //     PENDENTE e a pessoa pode tentar de novo — nada fica pela metade. Escrever a
+  //     mesma letra duas vezes e inofensivo.
+  // 2o) fecha a avaliacao com trava de status. So fecha se ela ainda estiver
+  //     pendente; se dois envios chegarem juntos, ou se alguem reutilizar o link, o
+  //     segundo nao sobrescreve o primeiro.
+  const tabela = avaliacao.colaborador_id ? 'colaboradores' : 'candidatos'
+  const idAlvo = avaliacao.colaborador_id || avaliacao.candidato_id
+
+  if (idAlvo) {
+    const { error: erroPerfil } = await supabase
+      .from(tabela)
+      .update({ perfil_disc: resultado.primario })
+      .eq('id', idAlvo)
+
+    // Nunca confirmar sucesso sem ter gravado o perfil: a tela do RH le essa coluna,
+    // e um "respondido" sem perfil seria um resultado invisivel pra quem precisa dele.
+    if (erroPerfil) {
+      throw new Error('Não consegui registrar o perfil. Tente enviar novamente.')
+    }
+  }
+
+  const { data: atualizadas, error } = await supabase
     .from('disc_avaliacoes')
     .update({
       respostas,
@@ -104,15 +153,13 @@ export async function finalizarAvaliacao(
       respondido_em: new Date().toISOString(),
     })
     .eq('id', avaliacao.id)
+    .eq('status', 'pendente')
+    .select('id')
 
   if (error) throw new Error(error.message)
 
-  // A coluna perfil_disc guarda UMA letra (é o que as telas atuais esperam), então
-  // vai o primário. O perfil completo, com os dois gráficos, fica em disc_avaliacoes.
-  const tabela = avaliacao.colaborador_id ? 'colaboradores' : 'candidatos'
-  const id = avaliacao.colaborador_id || avaliacao.candidato_id
-  if (id) {
-    await supabase.from(tabela).update({ perfil_disc: resultado.primario }).eq('id', id)
+  if (!atualizadas || atualizadas.length !== 1) {
+    throw new Error('Este questionário já foi respondido ou o link foi cancelado.')
   }
 
   return resultado

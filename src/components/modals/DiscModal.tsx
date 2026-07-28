@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { Modal, Badge } from '../ui'
 import {
   abrirAvaliacao,
+  cancelarPendentes,
   linkDoQuestionario,
   listarDoColaborador,
   type AvaliacaoDisc,
@@ -42,9 +43,19 @@ export function DiscModal({ open, onClose, colaboradorId, candidatoId, nome }: P
     if (open) carregar()
   }, [open, carregar])
 
-  const gerarLink = async () => {
+  const gerarLink = async (trocar = false) => {
+    // Trocar o link nao e so gerar outro: o anterior precisa MORRER, senao quem
+    // recebeu o primeiro continua conseguindo responder e o RH nao sabe qual vale.
+    if (trocar) {
+      const confirmado = window.confirm(
+        'O link anterior deixa de funcionar e um novo será gerado. Continuar?',
+      )
+      if (!confirmado) return
+    }
+
     setGerando(true)
     try {
+      if (trocar) await cancelarPendentes({ colaboradorId, candidatoId })
       const a = await abrirAvaliacao({ colaboradorId, candidatoId })
       await navigator.clipboard.writeText(linkDoQuestionario(a.token)).catch(() => {})
       toast.success('Link gerado e copiado.')
@@ -85,17 +96,34 @@ export function DiscModal({ open, onClose, colaboradorId, candidatoId, nome }: P
               {pendente && (
                 <button
                   className="btn-secondary"
-                  onClick={() => {
-                    navigator.clipboard.writeText(linkDoQuestionario(pendente.token))
-                    toast.success('Link copiado.')
+                  onClick={async () => {
+                    // Navegador pode negar a area de transferencia (permissao, aba sem
+                    // foco). Sem o catch isso virava rejeicao nao tratada e o RH ficava
+                    // sem saber se copiou — agora mostramos o link pra copiar na mao.
+                    try {
+                      await navigator.clipboard.writeText(linkDoQuestionario(pendente.token))
+                      toast.success('Link copiado.')
+                    } catch {
+                      window.prompt('Copie o link do questionário:', linkDoQuestionario(pendente.token))
+                    }
                   }}
                 >
                   <Copy size={15} /> Copiar link
                 </button>
               )}
-              <button className="btn-primary" onClick={gerarLink} disabled={gerando}>
+              <button
+                className="btn-primary"
+                onClick={() => gerarLink(Boolean(pendente))}
+                disabled={gerando}
+              >
                 {respondida || pendente ? <RefreshCw size={15} /> : <Link2 size={15} />}
-                {gerando ? 'Gerando...' : pendente ? 'Gerar novo link' : respondida ? 'Aplicar de novo' : 'Gerar link'}
+                {gerando
+                  ? 'Gerando...'
+                  : pendente
+                    ? 'Cancelar e gerar novo'
+                    : respondida
+                      ? 'Aplicar de novo'
+                      : 'Gerar link'}
               </button>
             </div>
           </div>

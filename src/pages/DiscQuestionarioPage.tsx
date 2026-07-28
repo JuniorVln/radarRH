@@ -82,9 +82,9 @@ export function DiscQuestionarioPage() {
     return (
       <Moldura>
         <div className="text-center py-16">
-          <h1 className="text-xl font-semibold text-gray-900">Link inválido</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Link inválido ou cancelado</h1>
           <p className="text-gray-500 mt-2">
-            Este questionário não existe ou foi cancelado. Peça um link novo ao RH.
+            Este questionário não existe ou o link foi cancelado. Peça um link novo ao RH.
           </p>
         </div>
       </Moldura>
