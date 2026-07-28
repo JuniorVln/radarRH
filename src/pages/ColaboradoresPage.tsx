@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Layout } from '../components/layout/Layout'
 import { Users, Plus, Grid, List, BarChart2, Trash2, Pencil } from 'lucide-react'
 import { Badge, Modal, EmptyState, Avatar, SearchInput } from '../components/ui'
@@ -24,6 +25,42 @@ export function ColaboradoresPage() {
   const [filterTipo, setFilterTipo] = useState('todos')
   const [confirmDelete, setConfirmDelete] = useState<Colaborador | null>(null)
 
+  // Contratacao vinda do Recrutamento: o card do candidato navega pra ca com os dados
+  // dele no state da rota. Abrimos o cadastro ja preenchido e so movemos o candidato
+  // pra "contratado" DEPOIS que o colaborador for salvo de verdade — se o RH desistir
+  // no meio, nada muda no pipeline.
+  const location = useLocation()
+  const navigate = useNavigate()
+  const contratacao = (location.state as any)?.contratarCandidato as
+    | { candidatoId: string; nome: string; email: string; telefone: string; cargo: string; setor: string }
+    | undefined
+  const [prefill, setPrefill] = useState<Record<string, string> | null>(null)
+  const [candidatoPendente, setCandidatoPendente] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!contratacao) return
+    const { candidatoId, ...dados } = contratacao
+    setPrefill(dados)
+    setCandidatoPendente(candidatoId)
+    setSelectedColaborador(null)
+    setShowModal(true)
+    // Limpa o state da rota pra um F5 nao reabrir o modal com os mesmos dados.
+    navigate('/colaboradores', { replace: true, state: null })
+  }, [contratacao, navigate])
+
+  const handleSaved = async () => {
+    await fetchColaboradores()
+    if (!candidatoPendente) return
+    const { error } = await supabase
+      .from('candidatos')
+      .update({ etapa_kanban: 'contratado' })
+      .eq('id', candidatoPendente)
+    if (error) toast.error('Colaborador salvo, mas nao consegui mover o candidato: ' + error.message)
+    else toast.success('Candidato movido para Contratado.')
+    setCandidatoPendente(null)
+    setPrefill(null)
+  }
+
   const fetchColaboradores = useCallback(async () => {
     setLoading(true)
     const { data, error } = await supabase
@@ -46,11 +83,15 @@ export function ColaboradoresPage() {
 
   const handleEdit = (c: Colaborador) => {
     setSelectedColaborador(c)
+    setPrefill(null)
+    setCandidatoPendente(null)
     setShowModal(true)
   }
 
   const handleNew = () => {
     setSelectedColaborador(null)
+    setPrefill(null)
+    setCandidatoPendente(null)
     setShowModal(true)
   }
 
@@ -235,8 +276,9 @@ export function ColaboradoresPage() {
       <ColaboradorModal 
         open={showModal} 
         onClose={() => setShowModal(false)} 
-        onSaved={fetchColaboradores} 
+        onSaved={handleSaved} 
         colaborador={selectedColaborador}
+        prefill={prefill}
       />
       
       <NineBoxModal open={showNineBox} onClose={() => setShowNineBox(false)} colaboradores={filtered} />

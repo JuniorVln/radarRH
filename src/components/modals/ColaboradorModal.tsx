@@ -10,6 +10,8 @@ interface Props {
   onClose: () => void
   onSaved: () => void
   colaborador?: Colaborador | null
+  /** Valores iniciais pra um cadastro NOVO (ex.: candidato vindo do Recrutamento). */
+  prefill?: Partial<typeof EMPTY> | null
 }
 
 const EMPTY_ENDERECO = { cep: '', rua: '', numero: '', bairro: '', cidade: '', uf: '' }
@@ -55,13 +57,29 @@ const EMPTY = {
   dados_bancarios: { ...EMPTY_BANCO }
 }
 
-export function ColaboradorModal({ open, onClose, onSaved, colaborador }: Props) {
+export function ColaboradorModal({ open, onClose, onSaved, colaborador, prefill }: Props) {
   const [form, setForm] = useState({ ...EMPTY })
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'pessoais' | 'contratuais' | 'documentos' | 'dependentes' | 'anexos'>('pessoais')
   const [dependentes, setDependentes] = useState<Partial<Dependente>[]>([])
   const [anexos, setAnexos] = useState<Partial<AnexoColaborador>[]>([])
   const [demissao, setDemissao] = useState({ data: '', valor_rescisao: '' })
+  // Cargos ja cadastrados, pra oferecer no campo Cargo. Continua salvando o NOME no
+  // mesmo campo texto: nao migra os registros antigos e nao trava cadastro de um cargo
+  // que ainda nao existe na tabela.
+  const [cargosCadastrados, setCargosCadastrados] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!open) return
+    supabase
+      .from('cargos')
+      .select('titulo')
+      .eq('status', 'ativo')
+      .order('titulo')
+      .then(({ data }) => {
+        if (data) setCargosCadastrados([...new Set(data.map(c => c.titulo).filter(Boolean))])
+      })
+  }, [open])
 
   useEffect(() => {
     if (colaborador) {
@@ -107,13 +125,13 @@ export function ColaboradorModal({ open, onClose, onSaved, colaborador }: Props)
       fetchDependentes(colaborador.id)
       fetchAnexos(colaborador.id)
     } else {
-      setForm({ ...EMPTY })
+      setForm({ ...EMPTY, ...(prefill || {}) })
       setDependentes([])
       setAnexos([])
     }
     setDemissao({ data: '', valor_rescisao: '' })
     setActiveTab('pessoais')
-  }, [colaborador, open])
+  }, [colaborador, open, prefill])
 
   const fetchDependentes = async (id: string) => {
     const { data } = await supabase.from('dependentes').select('*').eq('colaborador_id', id)
@@ -563,7 +581,21 @@ export function ColaboradorModal({ open, onClose, onSaved, colaborador }: Props)
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="colab-cargo" className="block text-sm font-medium text-gray-700 mb-1">Cargo *</label>
-                  <input id="colab-cargo" type="text" className="input-field" value={form.cargo} onChange={e => set('cargo', e.target.value)} />
+                  <input
+                    id="colab-cargo"
+                    type="text"
+                    className="input-field"
+                    list="cargos-cadastrados"
+                    placeholder={cargosCadastrados.length ? 'Selecione ou digite...' : 'Ex: Analista de RH'}
+                    value={form.cargo}
+                    onChange={e => set('cargo', e.target.value)}
+                  />
+                  <datalist id="cargos-cadastrados">
+                    {cargosCadastrados.map(c => <option key={c} value={c} />)}
+                  </datalist>
+                  {cargosCadastrados.length > 0 && (
+                    <p className="text-xs text-gray-400 mt-1">{cargosCadastrados.length} cargos cadastrados disponíveis.</p>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="colab-setor" className="block text-sm font-medium text-gray-700 mb-1">Setor *</label>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Layout } from '../components/layout/Layout'
-import { MessageSquare, Plus, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react'
+import { MessageSquare, Plus, CheckCircle, XCircle, Clock, Trash2, BellRing } from 'lucide-react'
 import { Badge, EmptyState, SearchInput, Modal } from '../components/ui'
 import { StatCard } from '../components/ui/StatCard'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/utils'
+import { calcularAvisosFeedback } from '../lib/feedbackAvisos'
 import toast from 'react-hot-toast'
 
 type FeedbackType = 'PARE' | 'AVANCE' | 'REVEJA'
@@ -118,6 +119,12 @@ export function FeedbackPage() {
     (f.descricao || '').toLowerCase().includes(search.toLowerCase())
   )
 
+  // Avisos a partir de proximo_feedback (ver src/lib/feedbackAvisos.ts).
+  // hoje entra como string pra funcao ficar deterministica e testavel.
+  const hoje = new Date().toISOString().slice(0, 10)
+  const avisos = calcularAvisosFeedback(feedbacks as any, hoje)
+  const nomePorId = (id: string) => colaboradores.find(c => c.id === id)?.nome || 'Colaborador'
+
   const stats = {
     total: feedbacks.length,
     emDia: feedbacks.filter(f => f.status === 'realizado').length,
@@ -134,6 +141,31 @@ export function FeedbackPage() {
         <StatCard title="Atrasados" value={String(stats.atrasados)} icon={<XCircle size={20} className="text-red-600" />} iconBg="bg-red-100" />
         <StatCard title="Pendentes" value={String(stats.pendentes)} icon={<Clock size={20} className="text-yellow-600" />} iconBg="bg-yellow-100" />
       </div>
+
+      {(avisos.vencidos.length > 0 || avisos.proximos.length > 0) && (
+        <div className="mb-6 rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <BellRing size={18} className="text-yellow-600" />
+            <p className="text-sm font-semibold text-yellow-800">
+              {avisos.vencidos.length > 0
+                ? `${avisos.vencidos.length} feedback(s) atrasado(s)`
+                : `${avisos.proximos.length} feedback(s) para os próximos 7 dias`}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {avisos.vencidos.map(a => (
+              <Badge key={a.colaboradorId} variant="red">
+                {nomePorId(a.colaboradorId)} — atrasado {Math.abs(a.diasRestantes)}d
+              </Badge>
+            ))}
+            {avisos.proximos.map(a => (
+              <Badge key={a.colaboradorId} variant="yellow">
+                {nomePorId(a.colaboradorId)} — {a.diasRestantes === 0 ? 'hoje' : `em ${a.diasRestantes}d`}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tipos de feedback */}
       <div className="grid grid-cols-3 gap-4 mb-6">

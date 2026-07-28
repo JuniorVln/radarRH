@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Layout } from '../components/layout/Layout'
-import { Plus, Calendar, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react'
+import { Plus, Calendar, AlertTriangle, CheckCircle, Trash2, Download } from 'lucide-react'
 import { Badge, EmptyState, SearchInput, Tabs, Modal } from '../components/ui'
 import { StatCard } from '../components/ui/StatCard'
 import { supabase } from '../lib/supabase'
 import type { Colaborador, Ferias } from '../lib/supabase'
 import { formatDate } from '../lib/utils'
+import { montarCSV, baixarCSV } from '../lib/csv'
 import toast from 'react-hot-toast'
 
 type FeriasTab = 'relatorio' | 'vencimento' | 'programacao'
@@ -148,6 +149,28 @@ export function ProvisaoFeriasPage() {
   const filtradas = feriasComVencimento.filter(f =>
     !search || nomeDe(f.colaborador_id).toLowerCase().includes(search.toLowerCase()))
 
+  // Exporta o que esta na tela (respeita a busca), nao a tabela inteira — se o RH
+  // filtrou por alguem, e esse recorte que ele quer levar pro Excel.
+  const exportarCSV = () => {
+    if (filtradas.length === 0) {
+      toast.error('Nada para exportar com o filtro atual.')
+      return
+    }
+    const csv = montarCSV(filtradas, [
+      { cabecalho: 'Colaborador', valor: f => nomeDe(f.colaborador_id) },
+      { cabecalho: 'Período aquisitivo início', valor: f => f.periodo_aquisitivo_inicio },
+      { cabecalho: 'Período aquisitivo fim', valor: f => f.periodo_aquisitivo_fim },
+      { cabecalho: 'Vencimento', valor: f => f.vencimento },
+      { cabecalho: 'Gozo programado', valor: f => f.gozo_programado },
+      { cabecalho: 'Dias', valor: f => f.dias },
+      { cabecalho: 'Status', valor: f => (f.vencida ? 'vencida' : f.status) },
+      { cabecalho: 'Dias até o vencimento', valor: f => f.diasVenc },
+    ])
+    const hoje = new Date().toISOString().slice(0, 10)
+    baixarCSV(`ferias-${hoje}.csv`, csv)
+    toast.success(`${filtradas.length} registro(s) exportado(s).`)
+  }
+
   const statusBadge = (f: typeof feriasComVencimento[number]) => {
     if (f.status === 'gozada') return <Badge variant="green">Gozada</Badge>
     if (f.vencida) return <Badge variant="red">Vencida</Badge>
@@ -212,10 +235,16 @@ export function ProvisaoFeriasPage() {
             value={tab}
             onChange={v => setTab(v as FeriasTab)}
           />
-          <button className="btn-primary" onClick={openNew}>
-            <Plus size={16} />
-            Programar Férias
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="btn-secondary" onClick={exportarCSV}>
+              <Download size={16} />
+              Exportar CSV
+            </button>
+            <button className="btn-primary" onClick={openNew}>
+              <Plus size={16} />
+              Programar Férias
+            </button>
+          </div>
         </div>
 
         <div className="p-4">

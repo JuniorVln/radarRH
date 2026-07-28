@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Layout } from '../components/layout/Layout'
 import {
   Briefcase,
@@ -121,6 +122,7 @@ function templateLabel(tipo: EmailTemplate['tipo']) {
 }
 
 export function RecrutamentoPage() {
+  const navigate = useNavigate()
   const [tab, setTab] = useState<RecrutamentoTab>('candidatos')
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
@@ -287,6 +289,25 @@ export function RecrutamentoPage() {
     candidatosAtivos: candidatos.filter(c => c.etapa_kanban !== 'reprovado' && c.etapa_kanban !== 'contratado').length,
     emProcesso: candidatos.filter(c => ['entrevista_rh', 'entrevista_tecnica', 'proposta'].includes(c.etapa_kanban)).length,
     testesRegistrados: testes.length,
+  }
+
+  // "Contratar" NAO cria o colaborador sozinho: colaboradores exige CPF valido, cargo e
+  // setor, que o candidato nao tem. Levamos o que existe pro cadastro ja aberto e
+  // preenchido, o RH completa o resto. So depois de salvar de verdade e que o candidato
+  // e movido pra "contratado" (feito na tela de Colaboradores).
+  const handleContratar = (c: Candidato) => {
+    navigate('/colaboradores', {
+      state: {
+        contratarCandidato: {
+          candidatoId: c.id,
+          nome: c.nome,
+          email: c.email || '',
+          telefone: c.telefone || '',
+          cargo: vagas.find(v => v.id === c.vaga_id)?.titulo || '',
+          setor: vagas.find(v => v.id === c.vaga_id)?.setor || '',
+        },
+      },
+    })
   }
 
   const handleSaveVaga = async () => {
@@ -642,6 +663,9 @@ export function RecrutamentoPage() {
                                 </button>
                                 <button onClick={() => setTesteCandidato(c)} className="p-1 text-indigo-500 hover:bg-indigo-50 rounded transition" title="Vincular teste">
                                   <FileCheck size={14} />
+                                </button>
+                                <button onClick={() => handleContratar(c)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition" title="Contratar">
+                                  <UserPlus size={14} />
                                 </button>
                                 <button
                                   onClick={() => {
