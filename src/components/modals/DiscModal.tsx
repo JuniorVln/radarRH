@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Copy, Link2, RefreshCw } from 'lucide-react'
+import { Copy, Link2, RefreshCw, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Modal, Badge } from '../ui'
 import {
@@ -11,6 +11,7 @@ import {
 } from '../../lib/discService'
 import { DiscResultado } from '../DiscResultado'
 import { formatDate } from '../../lib/utils'
+import { enviarPeloConectaRI, mensagemDoDisc } from '../../lib/conectaRI'
 
 interface Props {
   open: boolean
@@ -31,6 +32,7 @@ export function DiscModal({ open, onClose, colaboradorId, candidatoId, nome }: P
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoDisc[]>([])
   const [carregando, setCarregando] = useState(false)
   const [gerando, setGerando] = useState(false)
+  const [enviando, setEnviando] = useState(false)
 
   const carregar = useCallback(async () => {
     if (!colaboradorId) return
@@ -67,6 +69,23 @@ export function DiscModal({ open, onClose, colaboradorId, candidatoId, nome }: P
     }
   }
 
+  // Envio e sempre um clique do RH, com confirmacao: a mensagem chega pra uma pessoa
+  // de verdade no chat da empresa. Nada dispara sozinho.
+  const enviarPeloChat = async (token: string) => {
+    if (!window.confirm(`Enviar o questionário para ${nome} pelo Conecta RI?`)) return
+
+    setEnviando(true)
+    try {
+      const r = await enviarPeloConectaRI(nome, mensagemDoDisc(nome, linkDoQuestionario(token)))
+      toast.success(`Enviado para @${r.enviadoPara} no Conecta RI.`)
+    } catch (e: any) {
+      // Inclui o caso de homonimo: a funcao recusa em vez de chutar destinatario.
+      toast.error(e.message, { duration: 8000 })
+    } finally {
+      setEnviando(false)
+    }
+  }
+
   const respondida = avaliacoes.find(a => a.status === 'respondido' && a.resultado)
   const pendente = avaliacoes.find(a => a.status === 'pendente')
 
@@ -93,6 +112,15 @@ export function DiscModal({ open, onClose, colaboradorId, candidatoId, nome }: P
             </div>
 
             <div className="flex items-center gap-2">
+              {pendente && (
+                <button
+                  className="btn-secondary"
+                  onClick={() => enviarPeloChat(pendente.token)}
+                  disabled={enviando}
+                >
+                  <Send size={15} /> {enviando ? 'Enviando...' : 'Enviar pelo Conecta RI'}
+                </button>
+              )}
               {pendente && (
                 <button
                   className="btn-secondary"
