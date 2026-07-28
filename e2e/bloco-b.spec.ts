@@ -213,7 +213,12 @@ test('Férias: abono respeita o limite legal e entra no CSV', async ({ page }) =
   expect(ferias).toHaveLength(1)
   expect(ferias![0]).toMatchObject({ dias: 20, dias_abono: 10, observacao: 'Vendeu 10 dias.' })
 
-  await expect(page.getByRole('cell', { name: '10d' })).toBeVisible()
+  // Ancorado na LINHA do colaborador de teste: outros colaboradores reais podem ter
+  // abono de 10 dias tambem (a Deise lancou um testando), e ai a busca solta por "10d"
+  // acha mais de uma celula e o teste quebra sem nada estar errado.
+  await expect(
+    page.getByRole('row', { name: new RegExp(NOME_COLAB) }).getByRole('cell', { name: '10d' }),
+  ).toBeVisible()
 
   // O abono precisa sair no CSV — e o numero que a folha usa
   await page.getByPlaceholder('Buscar colaborador...').fill(NOME_COLAB)

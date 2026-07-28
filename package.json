@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "test:smoke": "playwright test --config playwright.smoke.config.ts",
     "test:visual": "playwright test --config playwright.visual.config.ts",
-    "test:visual:atualizar": "playwright test --config playwright.visual.config.ts --update-snapshots"
+    "test:visual:atualizar": "playwright test --config playwright.visual.config.ts --update-snapshots",
+    "test:producao": "node scripts/check-producao.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",

@@ -36,7 +36,12 @@ test.describe('regressão visual', () => {
       await page.waitForTimeout(600)
 
       await expect(page).toHaveScreenshot(`${rota.slug}.png`, {
-        fullPage: true,
+        // VIEWPORT, nao pagina inteira. Com fullPage, cada linha nova numa tabela muda
+        // a ALTURA do print e vira diferenca — e a partir do momento em que alguem usa
+        // o sistema de verdade (a Deise lancou ferias em 28/07), isso reprovaria todo
+        // dia sem nenhuma regressao existir. Alarme que toca sempre ninguem olha.
+        // Regressao de layout aparece na primeira dobra do mesmo jeito.
+        fullPage: false,
         mask: AREAS_DE_DADOS.map((s) => page.locator(s)),
         // 0,2% da area. Em pagina inteira, 1% engolia mudanca de padding de botao —
         // testado com canario. Baixo o suficiente pra pegar layout, alto o suficiente
