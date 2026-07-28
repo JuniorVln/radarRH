@@ -10,6 +10,15 @@ import { readFileSync } from 'node:fs'
 // desenvolvimento do Vite faz esse fallback sozinho: o bug só existe no deploy.
 //
 // Este teste lê o arquivo de configuração e confere as duas regras e a ORDEM delas.
+//
+// SEGUNDA ARMADILHA, também paga na prática: a Vercel valida o vercel.json de forma
+// estrita e RECUSA chaves que não estão no schema dela. A primeira tentativa de
+// correção levava um "_comentario" explicando as regras — e isso fez o BUILD FALHAR,
+// deixando a produção na versão quebrada por mais tempo. Por isso o arquivo não tem
+// comentário nenhum e a explicação mora aqui.
+//
+// Ordem que a Vercel aplica: arquivos estáticos e funções de /api primeiro; os
+// rewrites abaixo só entram quando nada disso resolveu a URL.
 
 const config = JSON.parse(readFileSync('vercel.json', 'utf8'))
 

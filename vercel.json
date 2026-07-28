@@ -1,13 +1,4 @@
 {
-  "_comentario": [
-    "A ORDEM IMPORTA. O portal de vagas e uma pagina propria (vagas.html); todo o",
-    "resto e a SPA, que precisa receber index.html em qualquer rota funda —",
-    "/colaboradores, /disc/<token> etc.",
-    "Sem o segundo rewrite essas rotas dao 404 quando abertas direto ou recarregadas:",
-    "aconteceu de verdade — este arquivo entrou so com a regra do /vagas e derrubou",
-    "as rotas da SPA em producao.",
-    "Arquivos estaticos e as funcoes de /api sao resolvidos ANTES destes rewrites."
-  ],
   "rewrites": [
     { "source": "/vagas", "destination": "/vagas.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
