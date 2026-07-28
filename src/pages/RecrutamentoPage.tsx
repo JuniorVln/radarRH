@@ -63,6 +63,8 @@ const EMPTY_CANDIDATO = {
   aderencia_vaga: '',
   area: '',
   observacoes_internas: '',
+  origem: '',
+  motivo_desfecho: '',
 }
 
 const EMPTY_TEMPLATE = {
@@ -225,6 +227,8 @@ export function RecrutamentoPage() {
       aderencia_vaga: c.aderencia_vaga != null ? String(c.aderencia_vaga) : '',
       area: c.area || '',
       observacoes_internas: c.observacoes_internas || '',
+      origem: (c as any).origem || '',
+      motivo_desfecho: (c as any).motivo_desfecho || '',
     })
     setShowNovoCandidato(true)
   }
@@ -376,6 +380,11 @@ export function RecrutamentoPage() {
       aderencia_vaga: formCand.aderencia_vaga ? Number(formCand.aderencia_vaga) : null,
       area: formCand.area || null,
       observacoes_internas: formCand.observacoes_internas || null,
+      origem: formCand.origem || null,
+      motivo_desfecho: formCand.motivo_desfecho || null,
+      // A data do desfecho e carimbada pelo sistema quando ha motivo — nao adianta
+      // pedir pro RH digitar uma data que ele nao lembra.
+      data_desfecho: formCand.motivo_desfecho ? new Date().toISOString().slice(0, 10) : null,
     }
     const { error } = editingCand
       ? await supabase.from('candidatos').update(payload).eq('id', editingCand.id)
@@ -989,6 +998,25 @@ export function RecrutamentoPage() {
             <div>
               <label className="label">Área de atuação</label>
               <input className="input" placeholder="Ex: Vendas" value={formCand.area} onChange={e => setFormCand(p => ({ ...p, area: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Origem da candidatura</label>
+              <select className="input" value={formCand.origem} onChange={e => setFormCand(p => ({ ...p, origem: e.target.value }))}>
+                <option value="">Não informada</option>
+                <option value="Indicação">Indicação</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="InfoJobs">InfoJobs</option>
+                <option value="Site">Site</option>
+                <option value="Banco de talentos">Banco de talentos</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Motivo de saída do processo</label>
+              <input className="input" value={formCand.motivo_desfecho} onChange={e => setFormCand(p => ({ ...p, motivo_desfecho: e.target.value }))} placeholder="Desistiu, desclassificado..." />
+              <p className="text-xs text-gray-400 mt-1">A data é registrada automaticamente.</p>
             </div>
           </div>
           <div>

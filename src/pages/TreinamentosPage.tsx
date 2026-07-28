@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Layout } from '../components/layout/Layout'
-import { BookOpen, Plus, Trash2, Users } from 'lucide-react'
+import { BookOpen, Link as LinkIcon, Plus, Trash2, Users } from 'lucide-react'
 import { Badge, EmptyState, SearchInput, Tabs, Modal, ProgressBar } from '../components/ui'
 import { supabase } from '../lib/supabase'
+import { formatDate } from '../lib/utils'
 import toast from 'react-hot-toast'
 
 type TreinamentosTab = 'trilhas' | 'colaboradores'
 
-const EMPTY_TRILHA = { nome: '', setor: '', descricao: '', status: 'ativo' as const }
+const EMPTY_TRILHA = { nome: '', setor: '', descricao: '', status: 'ativo' as const, link_url: '', carga_horaria: '', data_inicio: '', data_fim: '' }
 const EMPTY_ATRIB = { trilha_id: '', colaborador_nome: '', progresso: '0' }
 
 export function TreinamentosPage() {
@@ -32,7 +33,16 @@ export function TreinamentosPage() {
 
   const openEditTrilha = (t: any) => {
     setEditing(t)
-    setForm({ nome: t.nome || '', setor: t.setor || '', descricao: t.descricao || '', status: t.status || 'ativo' })
+    setForm({
+      nome: t.nome || '',
+      setor: t.setor || '',
+      descricao: t.descricao || '',
+      status: t.status || 'ativo',
+      link_url: t.link_url || '',
+      carga_horaria: t.carga_horaria != null ? String(t.carga_horaria) : '',
+      data_inicio: t.data_inicio || '',
+      data_fim: t.data_fim || '',
+    })
     setShowNova(true)
   }
 
@@ -54,7 +64,16 @@ export function TreinamentosPage() {
   const handleSaveTrilha = async () => {
     if (!form.nome.trim()) { toast.error('Nome é obrigatório.'); return }
     setSaving(true)
-    const payload: any = { nome: form.nome, setor: form.setor || null, descricao: form.descricao || null, status: form.status }
+    const payload: any = {
+      nome: form.nome,
+      setor: form.setor || null,
+      descricao: form.descricao || null,
+      status: form.status,
+      link_url: form.link_url || null,
+      carga_horaria: form.carga_horaria ? Number(form.carga_horaria) : null,
+      data_inicio: form.data_inicio || null,
+      data_fim: form.data_fim || null,
+    }
     const { error } = editing
       ? await supabase.from('trilhas').update(payload).eq('id', editing.id)
       : await supabase.from('trilhas').insert(payload)
@@ -79,11 +98,16 @@ export function TreinamentosPage() {
       return
     }
     setSaving(true)
+    const progressoInicial = Number(formAtrib.progresso) || 0
+    const hojeIso = new Date().toISOString().slice(0, 10)
     const { error } = await supabase.from('trilha_colaborador').insert({
       trilha_id: formAtrib.trilha_id,
       colaborador_id: colabs[0].id,
-      progresso: Number(formAtrib.progresso) || 0,
-      status: 'nao_iniciado',
+      progresso: progressoInicial,
+      status: progressoInicial >= 100 ? 'concluido' : progressoInicial > 0 ? 'em_andamento' : 'nao_iniciado',
+      // Quem ja entra com progresso comecou hoje; quem entra em 0 ainda nao comecou.
+      data_inicio: progressoInicial > 0 ? hojeIso : null,
+      data_conclusao: progressoInicial >= 100 ? hojeIso : null,
     })
     setSaving(false)
     if (error) { toast.error('Erro: ' + error.message); return }
@@ -155,6 +179,25 @@ export function TreinamentosPage() {
                         <Badge variant={t.status === 'ativo' ? 'green' : 'gray'}>{t.status}</Badge>
                       </div>
                       {t.setor && <p className="text-sm text-gray-500">{t.setor}</p>}
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        {t.carga_horaria != null && <Badge variant="gray">{t.carga_horaria}h</Badge>}
+                        {t.data_inicio && (
+                          <span className="text-xs text-gray-400">
+                            {formatDate(t.data_inicio)}{t.data_fim ? ` — ${formatDate(t.data_fim)}` : ''}
+                          </span>
+                        )}
+                        {t.link_url && (
+                          <a
+                            href={t.link_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
+                          >
+                            <LinkIcon size={12} /> Abrir treinamento
+                          </a>
+                        )}
+                      </div>
                       {t.descricao && <p className="text-xs text-gray-400 mt-1">{t.descricao}</p>}
                       <p className="text-xs text-gray-400 mt-2">
                         {progresso.filter(p => p.trilha_id === t.id).length} colaboradores atribuídos
@@ -179,6 +222,8 @@ export function TreinamentosPage() {
                       <th>Colaborador</th>
                       <th>Trilha</th>
                       <th>Status</th>
+                      <th>Início</th>
+                      <th>Conclusão</th>
                       <th>Progresso</th>
                     </tr>
                   </thead>
@@ -202,6 +247,8 @@ export function TreinamentosPage() {
                             <option value="concluido">Concluído</option>
                           </select>
                         </td>
+                        <td className="text-gray-500 text-sm">{p.data_inicio ? formatDate(p.data_inicio) : '—'}</td>
+                        <td className="text-gray-500 text-sm">{p.data_conclusao ? formatDate(p.data_conclusao) : '—'}</td>
                         <td>
                           <div className="flex items-center gap-2 min-w-32">
                             <div className="flex-1 bg-gray-200 rounded-full h-2">
@@ -217,7 +264,16 @@ export function TreinamentosPage() {
                               onBlur={async e => {
                                 const novo = Math.min(100, Math.max(0, Number(e.target.value) || 0))
                                 if (novo === p.progresso) return
-                                const { error } = await supabase.from('trilha_colaborador').update({ progresso: novo, status: novo >= 100 ? 'concluido' : novo > 0 ? 'em_andamento' : 'nao_iniciado' }).eq('id', p.id)
+                                const hojeIso = new Date().toISOString().slice(0, 10)
+                                const { error } = await supabase.from('trilha_colaborador').update({
+                                  progresso: novo,
+                                  status: novo >= 100 ? 'concluido' : novo > 0 ? 'em_andamento' : 'nao_iniciado',
+                                  // Carimba o inicio no primeiro avanco e nunca sobrescreve depois.
+                                  data_inicio: novo > 0 ? (p.data_inicio || hojeIso) : null,
+                                  // Voltar de 100 pra menos limpa a conclusao — senao fica "concluido em"
+                                  // numa trilha que voltou a ficar em andamento.
+                                  data_conclusao: novo >= 100 ? (p.data_conclusao || hojeIso) : null,
+                                }).eq('id', p.id)
                                 if (error) toast.error('Erro ao atualizar progresso.')
                                 else fetchAll()
                               }}
@@ -244,6 +300,24 @@ export function TreinamentosPage() {
           <div>
             <label className="label">Setor (opcional)</label>
             <input className="input" placeholder="Ex: DP, RH, Comercial" value={form.setor} onChange={e => setForm(p => ({ ...p, setor: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label">Link do treinamento</label>
+            <input className="input" type="url" placeholder="https://..." value={form.link_url} onChange={e => setForm(p => ({ ...p, link_url: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="label">Carga horária (h)</label>
+              <input className="input" type="number" min="0" step="0.5" placeholder="Ex: 8" value={form.carga_horaria} onChange={e => setForm(p => ({ ...p, carga_horaria: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Início</label>
+              <input className="input" type="date" value={form.data_inicio} onChange={e => setForm(p => ({ ...p, data_inicio: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Fim previsto</label>
+              <input className="input" type="date" value={form.data_fim} onChange={e => setForm(p => ({ ...p, data_fim: e.target.value }))} />
+            </div>
           </div>
           <div>
             <label className="label">Descrição</label>

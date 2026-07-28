@@ -18,6 +18,8 @@ const EMPTY_FORM = {
   vencimento: '',
   gozo_programado: '',
   dias: '30',
+  dias_abono: '0',
+  observacao: '',
   status: 'pendente' as Ferias['status'],
 }
 
@@ -80,6 +82,8 @@ export function ProvisaoFeriasPage() {
       vencimento: f.vencimento || '',
       gozo_programado: f.gozo_programado || '',
       dias: String(f.dias ?? 30),
+      dias_abono: String((f as any).dias_abono ?? 0),
+      observacao: (f as any).observacao || '',
       status: f.status || 'pendente',
     })
     setShowModal(true)
@@ -100,6 +104,20 @@ export function ProvisaoFeriasPage() {
       toast.error('Preencha colaborador e período aquisitivo.')
       return
     }
+    const diasGozo = Number(form.dias) || 0
+    const diasAbono = Number(form.dias_abono) || 0
+    // A CLT permite vender ate 1/3 do periodo. O banco tambem trava (constraint
+    // ferias_dias_abono_limite), mas barrar aqui da uma mensagem util em vez de
+    // devolver um erro cru do Postgres pro RH.
+    if (diasAbono < 0 || diasAbono > 10) {
+      toast.error('O abono (venda de dias) vai de 0 a 10 dias.')
+      return
+    }
+    if (diasGozo + diasAbono > 30) {
+      toast.error('Gozo + abono não pode passar de 30 dias.')
+      return
+    }
+
     setSaving(true)
     const payload = {
       colaborador_id: form.colaborador_id,
@@ -107,7 +125,9 @@ export function ProvisaoFeriasPage() {
       periodo_aquisitivo_fim: form.periodo_aquisitivo_fim,
       vencimento: form.vencimento || null,
       gozo_programado: form.gozo_programado || null,
-      dias: Number(form.dias) || 30,
+      dias: diasGozo || 30,
+      dias_abono: diasAbono,
+      observacao: form.observacao || null,
       status: form.gozo_programado && form.status === 'pendente' ? 'programada' : form.status,
     }
     const { error } = editing
@@ -162,7 +182,9 @@ export function ProvisaoFeriasPage() {
       { cabecalho: 'Período aquisitivo fim', valor: f => f.periodo_aquisitivo_fim },
       { cabecalho: 'Vencimento', valor: f => f.vencimento },
       { cabecalho: 'Gozo programado', valor: f => f.gozo_programado },
-      { cabecalho: 'Dias', valor: f => f.dias },
+      { cabecalho: 'Dias de gozo', valor: f => f.dias },
+      { cabecalho: 'Abono (dias vendidos)', valor: f => (f as any).dias_abono ?? 0 },
+      { cabecalho: 'Observação', valor: f => (f as any).observacao },
       { cabecalho: 'Status', valor: f => (f.vencida ? 'vencida' : f.status) },
       { cabecalho: 'Dias até o vencimento', valor: f => f.diasVenc },
     ])
@@ -189,6 +211,7 @@ export function ProvisaoFeriasPage() {
             <th>Vencimento</th>
             <th>Gozo programado</th>
             <th>Dias</th>
+            <th>Abono</th>
             <th>Status</th>
             <th></th>
           </tr>
@@ -201,6 +224,7 @@ export function ProvisaoFeriasPage() {
               <td className="text-gray-500 text-sm">{f.vencimento ? formatDate(f.vencimento) : '—'}</td>
               <td className="text-gray-500 text-sm">{f.gozo_programado ? formatDate(f.gozo_programado) : '—'}</td>
               <td className="text-gray-500 text-sm">{f.dias}</td>
+              <td className="text-gray-500 text-sm">{(f as any).dias_abono ? `${(f as any).dias_abono}d` : '—'}</td>
               <td>{statusBadge(f)}</td>
               <td onClick={e => e.stopPropagation()}>
                 <button onClick={() => handleDelete(f.id)} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50">
@@ -329,6 +353,18 @@ export function ProvisaoFeriasPage() {
             <div>
               <label className="label" htmlFor="ferias-dias">Nº de Dias</label>
               <input id="ferias-dias" className="input" type="number" min="1" max="30" value={form.dias} onChange={e => setForm(p => ({ ...p, dias: e.target.value }))} />
+              <p className="text-xs text-gray-400 mt-1">Dias de gozo.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label" htmlFor="ferias-abono">Abono (venda de dias)</label>
+              <input id="ferias-abono" className="input" type="number" min="0" max="10" value={form.dias_abono} onChange={e => setForm(p => ({ ...p, dias_abono: e.target.value }))} />
+              <p className="text-xs text-gray-400 mt-1">Até 10 dias (1/3 do período).</p>
+            </div>
+            <div>
+              <label className="label" htmlFor="ferias-observacao">Observação</label>
+              <input id="ferias-observacao" className="input" value={form.observacao} onChange={e => setForm(p => ({ ...p, observacao: e.target.value }))} placeholder="Opcional" />
             </div>
           </div>
         </div>

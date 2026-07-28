@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Layout } from '../components/layout/Layout'
-import { Bell, Plus, X, Trash2 } from 'lucide-react'
+import { Bell, CalendarDays, Plus, X, Trash2 } from 'lucide-react'
 import { EmptyState, Modal, Badge } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/utils'
 import toast from 'react-hot-toast'
 
-const EMPTY = { titulo: '', conteudo: '', autor_nome: '', data_expiracao: '' }
+const EMPTY = { titulo: '', conteudo: '', autor_nome: '', data_evento: '', data_expiracao: '' }
 
 export function MuralRecadosPage() {
   const [recados, setRecados] = useState<any[]>([])
@@ -28,6 +28,7 @@ export function MuralRecadosPage() {
       titulo: r.titulo || '',
       conteudo: r.conteudo || '',
       autor_nome: r.autor_nome || '',
+      data_evento: r.data_evento || '',
       data_expiracao: r.data_expiracao || '',
     })
     setShowNovo(true)
@@ -39,8 +40,20 @@ export function MuralRecadosPage() {
       .from('recados')
       .select('*')
       .order('criado_em', { ascending: false })
+    // Evento que ainda vai acontecer sobe pro topo, do mais proximo pro mais distante.
+    // O resto (sem data ou ja passado) segue por data de publicacao. Ordenar no cliente
+    // porque e uma regra composta que o order() do PostgREST nao expressa.
+    const hojeIso = new Date().toISOString().slice(0, 10)
+    const ordenados = (data || []).slice().sort((a: any, b: any) => {
+      const futuroA = a.data_evento && a.data_evento >= hojeIso
+      const futuroB = b.data_evento && b.data_evento >= hojeIso
+      if (futuroA && futuroB) return a.data_evento.localeCompare(b.data_evento)
+      if (futuroA) return -1
+      if (futuroB) return 1
+      return 0
+    })
     if (error) toast.error('Erro ao carregar recados.')
-    else setRecados(data || [])
+    else setRecados(ordenados)
     setLoading(false)
   }, [])
 
@@ -56,6 +69,7 @@ export function MuralRecadosPage() {
       titulo: form.titulo,
       conteudo: form.conteudo,
       autor_nome: form.autor_nome || null,
+      data_evento: form.data_evento || null,
       data_expiracao: form.data_expiracao || null,
     }
 
@@ -108,6 +122,14 @@ export function MuralRecadosPage() {
                 </button>
                 {expired && <div className="mb-2"><Badge variant="red">Expirado</Badge></div>}
                 <h3 className="font-semibold text-gray-900 pr-6">{r.titulo}</h3>
+                {r.data_evento && (
+                  <div className={`mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium ${
+                    r.data_evento >= hoje ? 'bg-indigo-50 text-indigo-700' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    <CalendarDays size={13} />
+                    {r.data_evento === hoje ? 'Hoje' : formatDate(r.data_evento)}
+                  </div>
+                )}
                 <p className="text-sm text-gray-600 mt-2 leading-relaxed">{r.conteudo}</p>
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
                   <span className="text-xs text-gray-400">{r.autor_nome || 'Equipe RH'}</span>
@@ -135,6 +157,11 @@ export function MuralRecadosPage() {
           <div>
             <label className="label">Mensagem *</label>
             <textarea className="input h-28 resize-none" placeholder="Digite o recado para a equipe..." value={form.conteudo} onChange={e => setForm(p => ({ ...p, conteudo: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label">Data do Evento (opcional)</label>
+            <input className="input" type="date" value={form.data_evento} onChange={e => setForm(p => ({ ...p, data_evento: e.target.value }))} />
+            <p className="text-xs text-gray-400 mt-1">Quando o acontecimento é. Eventos futuros aparecem primeiro no mural.</p>
           </div>
           <div>
             <label className="label">Data de Expiração (opcional)</label>
