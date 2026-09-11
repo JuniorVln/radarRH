@@ -5,6 +5,8 @@ import { defineConfig, devices } from '@playwright/test'
 // o retrato do sistema inteiro, mesmo com uma pagina quebrada no meio.
 export default defineConfig({
   testDir: './e2e',
+  // Sem sessao nenhuma tela abre desde 11/09 — isto loga os testes antes de comecar.
+  globalSetup: './e2e/sessao-setup.ts',
   testMatch: /smoke\.spec\.ts/,
   // Monta o relatorio HTML sempre ao fim, mesmo se alguma pagina falhar — o relatorio
   // com a pagina vermelha e justamente o que interessa nesse caso.
@@ -15,6 +17,7 @@ export default defineConfig({
   timeout: 60000,
   outputDir: 'smoke-report/videos',
   use: {
+    storageState: './e2e/.sessao.json',
     baseURL: 'http://localhost:5173',
     viewport: { width: 1440, height: 900 },
     screenshot: 'on',

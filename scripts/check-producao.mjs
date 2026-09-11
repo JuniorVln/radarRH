@@ -10,7 +10,9 @@
 // Esta verificação fecha exatamente esse buraco: ela olha o que o usuário veria.
 //
 // Uso:  node scripts/check-producao.mjs
-// Credencial: lê SITE_SENHA do ambiente ou de C:\Users\junio\.secrets\radar-rh.env
+// Desde 11/09/2026 nao existe mais senha unica de site: o acesso e por pessoa. Estas
+// checagens passaram a conferir o oposto do que conferiam antes - que o sistema NAO
+// entrega dado nenhum sem sessao, e que o bundle publico nao carrega credencial.
 
 import { readFileSync, existsSync } from 'node:fs'
 
@@ -32,15 +34,10 @@ function lerSegredos() {
 
 const env = lerSegredos()
 const BASE = env.RADAR_RH_URL || 'https://radar-rh.vercel.app'
-const USUARIO = env.SITE_USUARIO || 'rh'
-const SENHA = env.SITE_SENHA
 
-if (!SENHA) {
-  console.error(`[producao] SITE_SENHA não encontrada (ambiente ou ${ARQ_SEGREDO}).`)
-  process.exit(2)
-}
-
-const autenticado = { Authorization: 'Basic ' + Buffer.from(`${USUARIO}:${SENHA}`).toString('base64') }
+// Sem cabecalho de autenticacao: o site publico agora responde para qualquer um - o que
+// ele NAO pode e devolver dado sem login.
+const autenticado = {}
 
 const falhas = []
 
@@ -98,21 +95,46 @@ await checar('API pública /api/vagas devolve JSON', async () => {
   return null
 })
 
-// --- 3. O sistema continua fechado para quem não tem a senha ---
-await checar('sistema exige senha', async () => {
-  const r = await buscar('/')
-  return r.status === 401 ? null : `deveria ser 401, veio ${r.status}`
+// --- 3. O acesso e por pessoa: sem sessao, nenhum dado sai ---
+await checar('tela de login abre para qualquer um', async () => {
+  const r = await buscar('/login')
+  if (r.status !== 200) return `HTTP ${r.status}`
+  const html = await r.text()
+  if (!html.includes('id="root"')) return 'a rota /login nao entrega o app'
+  return null
 })
 
-await checar('bundle do app não é baixável sem senha', async () => {
-  // É por aqui que a chave do Supabase vazaria: se os assets abrirem sem senha,
-  // qualquer um extrai a chave e, com o RLS liberado, lê o banco inteiro.
-  const r = await buscar('/', { headers: autenticado })
+await checar('bundle publicado NAO carrega chave do banco', async () => {
+  // Era por aqui que a chave vazaria. Hoje o navegador nao recebe chave nenhuma: quem
+  // autoriza e o token de quem fez login, emitido no /api/auth/login.
+  const r = await buscar('/')
   const html = await r.text()
   const bundle = html.match(/\/assets\/[A-Za-z0-9._-]+\.js/)?.[0]
-  if (!bundle) return 'não achei o bundle no HTML'
-  const semSenha = await buscar(bundle)
-  return semSenha.status === 401 ? null : `assets abertos: HTTP ${semSenha.status}`
+  if (!bundle) return 'nao achei o bundle no HTML'
+  const js = await (await buscar(bundle)).text()
+  if (/eyJhbGciOiJI/.test(js)) return 'o bundle esta carregando um JWT - credencial embutida'
+  if (/supabase\.co/.test(js)) return 'o bundle ainda aponta para o Supabase'
+  return null
+})
+
+await checar('banco recusa quem nao tem sessao', async () => {
+  const r = await fetch('https://rh-api.178-18-248-126.sslip.io/rest/v1/colaboradores?select=nome&limit=1')
+  if (r.status !== 401) return `a API respondeu ${r.status} sem token (deveria ser 401)`
+  return null
+})
+
+await checar('login recusa credencial errada', async () => {
+  const r = await fetch(BASE + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'ninguem@exemplo.com', senha: 'senhaerrada123' }),
+  })
+  if (r.status !== 401) return `deveria ser 401, veio ${r.status}`
+  const corpo = await r.json()
+  // A mensagem nao pode dizer se o e-mail existe: isso transformaria o formulario numa
+  // forma de descobrir quem tem conta.
+  if (!/incorretos/i.test(corpo.erro || '')) return 'a mensagem de erro esta entregando detalhe demais'
+  return null
 })
 
 await checar('página pública não carrega chave do Supabase', async () => {

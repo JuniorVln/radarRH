@@ -18,4 +18,7 @@ const env = Object.fromEntries(
     })
 )
 
-export const supabaseTest = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY)
+// Chave de SERVICO: desde 11/09 nao existe mais chave geral de navegador, e o papel
+// anonimo perdeu acesso a tudo. Teste automatizado nao tem sessao de pessoa, entao ele
+// fala como servico — o mesmo que as funcoes do servidor fazem.
+export const supabaseTest = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY)

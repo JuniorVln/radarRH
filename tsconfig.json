@@ -3,6 +3,9 @@
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    // Vazio de proposito: src e codigo de navegador. Sem isto, o @types/node instalado
+    // para as funcoes de api entraria aqui e deixaria passar codigo de Node dentro do app.
+    "types": [],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",

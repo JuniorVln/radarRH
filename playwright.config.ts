@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
+  // Sem sessao nenhuma tela abre desde 11/09 — isto loga os testes antes de comecar.
+  globalSetup: './e2e/sessao-setup.ts',
   // O smoke visual tem config propria (playwright.smoke.config.ts) — grava video,
   // nao para na primeira falha e gera relatorio de prints.
   testIgnore: /(smoke|visual)\.spec\.ts/,
@@ -12,6 +14,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   timeout: 30000,
   use: {
+    storageState: './e2e/.sessao.json',
     baseURL: 'http://localhost:5173',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

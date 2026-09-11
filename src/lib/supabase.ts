@@ -1,7 +1,28 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { tokenAtual } from './sessao'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+
+// Toda consulta sai com o crachá de QUEM está logado, não com uma chave geral do sistema.
+// É isso que permite o banco responder de forma diferente para o RH e para o colaborador:
+// as policies leem `sub` e `papel` de dentro deste token.
+//
+// Fica como `fetch` (e não num header fixo do cliente) porque o token muda ao entrar e ao
+// sair, e o cliente é criado uma vez só, no carregamento do módulo.
+const fetchComSessao: typeof fetch = (entrada, init = {}) => {
+  const token = tokenAtual()
+  const headers = new Headers(init.headers)
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  } else {
+    // Sem sessão, melhor não mandar cabeçalho nenhum: o supabase-js preencheria com a
+    // chave inerte e o banco responderia um erro de JWT malformado, que confunde na hora
+    // de diagnosticar. Sem cabeçalho, a resposta é um 401 limpo.
+    headers.delete('Authorization')
+  }
+  return fetch(entrada, { ...init, headers })
+}
 
 
 
@@ -60,7 +81,12 @@ if (!isSupabaseConfigured) {
 }
 
 export const supabase: SupabaseClient = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      global: { fetch: fetchComSessao },
+      // O login é nosso (ver `api/auth/`), então o supabase-js não deve tentar gerenciar
+      // sessão, renovar token nem ler a URL atrás de parâmetros de autenticação.
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    })
   : createStubClient()
 
 export type Database = {

@@ -7,6 +7,7 @@ import {
   Target, Briefcase, WalletCards, PlugZap
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { useSessao } from '../../lib/sessao'
 
 interface NavItem {
   label: string
@@ -111,6 +112,7 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
   const location = useLocation()
+  const { sair } = useSessao()
 
   return (
     <aside className="sidebar">
@@ -163,7 +165,7 @@ export function Sidebar() {
         </NavLink>
         <button
           className="sidebar-link w-full text-left"
-          onClick={() => {}}
+          onClick={sair}
         >
           <LogOut size={18} className="text-slate-400" />
           <span className="text-sm">Sair</span>

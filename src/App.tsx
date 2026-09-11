@@ -23,36 +23,46 @@ import { ConfiguracoesPage } from './pages/ConfiguracoesPage'
 import { IntegracoesPage } from './pages/IntegracoesPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { DiscQuestionarioPage } from './pages/DiscQuestionarioPage'
+import { LoginPage } from './pages/LoginPage'
+import { DefinirSenhaPage } from './pages/DefinirSenhaPage'
+import { ProvedorSessao } from './lib/sessao'
+import { RotaProtegida } from './components/RotaProtegida'
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ProvedorSessao>
       <Toaster position="top-right" />
       <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/colaboradores" element={<ColaboradoresPage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/recrutamento" element={<RecrutamentoPage />} />
-        <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenhoPage />} />
-        <Route path="/turnover" element={<TurnoverPage />} />
-        <Route path="/provisao-ferias" element={<ProvisaoFeriasPage />} />
-        <Route path="/banco-de-horas" element={<BancoHorasPage />} />
-        <Route path="/beneficios" element={<BeneficiosPage />} />
-        <Route path="/cargos" element={<CargosPage />} />
-        <Route path="/ocorrencias" element={<OcorrenciasPage />} />
-        <Route path="/holerites" element={<HoleritesPage />} />
-        <Route path="/treinamentos" element={<TreinamentosPage />} />
-        <Route path="/contcoins" element={<ContCoinsPage />} />
-        <Route path="/mural-recados" element={<MuralRecadosPage />} />
-        <Route path="/feed-rh" element={<FeedRHPage />} />
-        <Route path="/perfil-comportamental" element={<PerfilComportamentalPage />} />
-        <Route path="/integracoes" element={<IntegracoesPage />} />
-        <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+        {/* Publicas: sao a porta de entrada. Nao podem exigir sessao, senao ninguem entra. */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/definir-senha" element={<DefinirSenhaPage />} />
+
+        <Route path="/" element={<RotaProtegida><DashboardPage /></RotaProtegida>} />
+        <Route path="/colaboradores" element={<RotaProtegida><ColaboradoresPage /></RotaProtegida>} />
+        <Route path="/feedback" element={<RotaProtegida><FeedbackPage /></RotaProtegida>} />
+        <Route path="/recrutamento" element={<RotaProtegida><RecrutamentoPage /></RotaProtegida>} />
+        <Route path="/avaliacao-desempenho" element={<RotaProtegida><AvaliacaoDesempenhoPage /></RotaProtegida>} />
+        <Route path="/turnover" element={<RotaProtegida><TurnoverPage /></RotaProtegida>} />
+        <Route path="/provisao-ferias" element={<RotaProtegida><ProvisaoFeriasPage /></RotaProtegida>} />
+        <Route path="/banco-de-horas" element={<RotaProtegida><BancoHorasPage /></RotaProtegida>} />
+        <Route path="/beneficios" element={<RotaProtegida><BeneficiosPage /></RotaProtegida>} />
+        <Route path="/cargos" element={<RotaProtegida><CargosPage /></RotaProtegida>} />
+        <Route path="/ocorrencias" element={<RotaProtegida><OcorrenciasPage /></RotaProtegida>} />
+        <Route path="/holerites" element={<RotaProtegida><HoleritesPage /></RotaProtegida>} />
+        <Route path="/treinamentos" element={<RotaProtegida><TreinamentosPage /></RotaProtegida>} />
+        <Route path="/contcoins" element={<RotaProtegida><ContCoinsPage /></RotaProtegida>} />
+        <Route path="/mural-recados" element={<RotaProtegida><MuralRecadosPage /></RotaProtegida>} />
+        <Route path="/feed-rh" element={<RotaProtegida><FeedRHPage /></RotaProtegida>} />
+        <Route path="/perfil-comportamental" element={<RotaProtegida><PerfilComportamentalPage /></RotaProtegida>} />
+        <Route path="/integracoes" element={<RotaProtegida><IntegracoesPage /></RotaProtegida>} />
+        <Route path="/configuracoes" element={<RotaProtegida><ConfiguracoesPage /></RotaProtegida>} />
         {/* Publica, sem Layout: quem responde e o colaborador/candidato, que nao pode
             ver o menu do RH nem os dados de mais ninguem. */}
         <Route path="/disc/:token" element={<DiscQuestionarioPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </ProvedorSessao>
     </BrowserRouter>
   )
 }

@@ -2,7 +2,7 @@
 // O motor de apuração fica em src/lib/disc.ts (puro, testável sem banco).
 
 import { supabase } from './supabase'
-import { calcularDisc, TETRADES, type ResultadoDisc, type RespostaTetrade } from './disc'
+import { type ResultadoDisc, type RespostaTetrade } from './disc'
 
 export type AvaliacaoDisc = {
   id: string
@@ -68,19 +68,13 @@ export async function abrirAvaliacao(
 }
 
 export async function buscarPorToken(token: string): Promise<AvaliacaoDisc | null> {
-  const { data } = await supabase
-    .from('disc_avaliacoes')
-    .select('*')
-    .eq('token', token)
-    .maybeSingle()
-
-  const avaliacao = (data as AvaliacaoDisc) || null
-
-  // Link cancelado nao pode abrir o questionario. Trata como inexistente aqui, para
-  // que a pagina publica caia na tela de link invalido sem precisar saber a regra.
-  if (avaliacao?.status === 'cancelado') return null
-
-  return avaliacao
+  // Passa pelo servidor de propósito: a página do questionário é PÚBLICA e o navegador
+  // não carrega mais chave nenhuma do banco. Quem lê é a função, usando o token como
+  // autorização — ver api/disc.ts.
+  const r = await fetch(`/api/disc?t=${encodeURIComponent(token)}`)
+  if (!r.ok) return null
+  const { avaliacao } = await r.json()
+  return (avaliacao as AvaliacaoDisc) || null
 }
 
 /** Encerra a avaliacao pendente de alguem, para poder emitir um link novo. */
@@ -118,49 +112,15 @@ export async function finalizarAvaliacao(
   avaliacao: AvaliacaoDisc,
   respostas: (RespostaTetrade | null)[],
 ): Promise<ResultadoDisc> {
-  const resultado = calcularDisc(respostas, TETRADES.length)
-
-  // ORDEM IMPORTA, e ela e o que garante que nao existe "meio salvo".
-  //
-  // 1o) perfil_disc no colaborador/candidato. Se falhar aqui, a avaliacao continua
-  //     PENDENTE e a pessoa pode tentar de novo — nada fica pela metade. Escrever a
-  //     mesma letra duas vezes e inofensivo.
-  // 2o) fecha a avaliacao com trava de status. So fecha se ela ainda estiver
-  //     pendente; se dois envios chegarem juntos, ou se alguem reutilizar o link, o
-  //     segundo nao sobrescreve o primeiro.
-  const tabela = avaliacao.colaborador_id ? 'colaboradores' : 'candidatos'
-  const idAlvo = avaliacao.colaborador_id || avaliacao.candidato_id
-
-  if (idAlvo) {
-    const { error: erroPerfil } = await supabase
-      .from(tabela)
-      .update({ perfil_disc: resultado.primario })
-      .eq('id', idAlvo)
-
-    // Nunca confirmar sucesso sem ter gravado o perfil: a tela do RH le essa coluna,
-    // e um "respondido" sem perfil seria um resultado invisivel pra quem precisa dele.
-    if (erroPerfil) {
-      throw new Error('Não consegui registrar o perfil. Tente enviar novamente.')
-    }
-  }
-
-  const { data: atualizadas, error } = await supabase
-    .from('disc_avaliacoes')
-    .update({
-      respostas,
-      resultado,
-      status: 'respondido',
-      respondido_em: new Date().toISOString(),
-    })
-    .eq('id', avaliacao.id)
-    .eq('status', 'pendente')
-    .select('id')
-
-  if (error) throw new Error(error.message)
-
-  if (!atualizadas || atualizadas.length !== 1) {
-    throw new Error('Este questionário já foi respondido ou o link foi cancelado.')
-  }
-
-  return resultado
+  // A apuração e a gravação acontecem no servidor (api/disc.ts): a tela envia as escolhas,
+  // não o resultado pronto, e é lá que ficam a trava de status e a escrita do perfil na
+  // ficha. Assim o mesmo link não fecha duas avaliações nem deixa resultado pela metade.
+  const r = await fetch('/api/disc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: avaliacao.token, respostas }),
+  })
+  const dados = await r.json()
+  if (!r.ok) throw new Error(dados?.erro || 'Não consegui registrar suas respostas.')
+  return dados.resultado as ResultadoDisc
 }

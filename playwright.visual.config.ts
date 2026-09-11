@@ -5,6 +5,8 @@ import { defineConfig, devices } from '@playwright/test'
 //  - as referencias sao por sistema operacional, entao isso roda LOCAL, nao no CI
 export default defineConfig({
   testDir: './e2e',
+  // Sem sessao nenhuma tela abre desde 11/09 — isto loga os testes antes de comecar.
+  globalSetup: './e2e/sessao-setup.ts',
   testMatch: /visual\.spec\.ts/,
   snapshotPathTemplate: 'e2e/referencias-visuais/{arg}{ext}',
   fullyParallel: false,
@@ -13,6 +15,7 @@ export default defineConfig({
   timeout: 60000,
   outputDir: 'test-results-visual',
   use: {
+    storageState: './e2e/.sessao.json',
     baseURL: 'http://localhost:5173',
     viewport: { width: 1440, height: 900 },
     animations: 'disabled',
