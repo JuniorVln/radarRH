@@ -7,8 +7,11 @@ Cada item foi conferido no código, não só na memória.
 
 **Legenda:** `[x]` pronto · `[~]` parcial · `[ ]` não começou · `⏳` travado esperando outra pessoa
 
-**Placar:** 13 de 13 bugs resolvidos · 11 features inteiras · 7 parciais · 8 não começadas ·
-4 travadas em terceiros.
+**Placar (11/09, fim do dia):** 13 de 13 bugs resolvidos · 12 features inteiras · 7 parciais · 7 não começadas ·
+3 travadas em terceiros.
+
+**Sobrou UMA tranca técnica: login por pessoa.** É o que segura férias pelo colaborador (F13), autor
+automático no feedback (F8b) e a aposentadoria da senha única. Todo o resto é trabalho nosso, sem esperar ninguém.
 
 ---
 
@@ -47,7 +50,7 @@ Corrigidos em 21/07 (commit `8e090f4`), revisados pelo Codex e os 3 restos fecha
 ## 🧠 DISC e Nine Box
 
 - [x] **F5** Questionário DISC próprio e autoral — 96 adjetivos escritos por nós, 24 tétrades, perfil natural × adaptado, página pública `/disc/<token>` sem login, resultado grava em `colaboradores.perfil_disc`
-- [~] **F5b** Disparo do DISC por e-mail — o link é gerado, mas o envio depende do e-mail (F23)
+- [~] **F5b** Disparo do DISC por e-mail — o link é gerado e o canal de envio já existe (F23 destravado); falta plugar
 - [~] **F6** Nine Box — a tela existe; só fica confiável quando DISC e competências estiverem rodando com dado real
 - [ ] **F7** Perfil DISC desejado por cargo (a "engenharia de cargo" da Sólides)
 - [~] **% de aderência candidato × vaga** — o campo existe e é preenchido à mão; não há cálculo automático
@@ -112,7 +115,7 @@ Corrigidos em 21/07 (commit `8e090f4`), revisados pelo Codex e os 3 restos fecha
 ## 📣 Mural, Feed e comunicação
 
 - [x] **F25** Data do evento no mural, separada da expiração, com evento futuro subindo pro topo
-- [ ] **F23** Disparo de e-mails pelo e-mail **pessoal** de cada colaborador — ⏳ **esperando o Márcio**; é pré-requisito do DISC por e-mail, dos holerites e dos treinamentos
+- [x] **F23** Disparo de e-mails — **DESTRAVADO em 11/09**, não dependia do Márcio: a Rede Ideia já tem domínio de envio próprio no Resend (`noreply@updates.pages.ideiabusiness.com.br`). Testado de verdade: enviado e recebido na caixa de entrada, sem cair em spam. Falta só ligar nos fluxos (DISC, holerites, treinamentos)
 - [ ] **F24** Avisos por WhatsApp via Multichat — futuro, depois da migração Bix→Multichat
 - [ ] **F26** Remover ContCoins (veio do sistema do contador e não tem uso hoje) — a página ainda está lá
 
@@ -133,7 +136,7 @@ Corrigidos em 21/07 (commit `8e090f4`), revisados pelo Codex e os 3 restos fecha
 
 ## ⏳ O que está parado esperando outra pessoa
 
-- **Márcio** — acesso ao Ideia Signer (F1) e o sistema de disparo de e-mails (F23). O e-mail trava 4 features de uma vez.
+- **Márcio** — só o acesso ao Ideia Signer (F1). O e-mail **saiu desta lista em 11/09**: já temos domínio de envio da própria Rede Ideia funcionando.
 - **Gustavo** — ponto próprio ou integração (F16).
 - **Deise** — a lista completa de regras de férias (F14) e a decisão sobre reclassificar CLT/Mensalista (F3b).
 
