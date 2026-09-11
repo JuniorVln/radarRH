@@ -7,11 +7,12 @@ Cada item foi conferido no código, não só na memória.
 
 **Legenda:** `[x]` pronto · `[~]` parcial · `[ ]` não começou · `⏳` travado esperando outra pessoa
 
-**Placar (11/09, fim do dia):** 13 de 13 bugs resolvidos · 12 features inteiras · 7 parciais · 7 não começadas ·
+**Placar (11/09, noite):** 13 de 13 bugs resolvidos · 13 features inteiras · 7 parciais · 6 não começadas ·
 3 travadas em terceiros.
 
-**Sobrou UMA tranca técnica: login por pessoa.** É o que segura férias pelo colaborador (F13), autor
-automático no feedback (F8b) e a aposentadoria da senha única. Todo o resto é trabalho nosso, sem esperar ninguém.
+**A tranca do login CAIU em 11/09.** O acesso agora é individual, com senha por pessoa, e quem decide o que
+cada um enxerga é o banco. Com isso não sobrou nenhum bloqueio técnico: o que falta é só construir, e as
+únicas esperas são o Ideia Signer (Márcio), a decisão do ponto (Gustavo) e as regras de férias (Deise).
 
 ---
 
@@ -58,7 +59,7 @@ Corrigidos em 21/07 (commit `8e090f4`), revisados pelo Codex e os 3 restos fecha
 ## 💬 Feedback
 
 - [x] **F8a** Colaborador escolhido por seleção, sem digitar nome (risco de homônimo resolvido)
-- [ ] **F8b** Gestor responsável preenchido automático — depende do superior direto
+- [ ] **F8b** Gestor responsável preenchido automático — falta só o campo de superior direto (o login, que era a outra metade, já existe)
 - [x] **F9** Aviso de próximo feedback, por colaborador, pelo registro mais recente (`lib/feedbackAvisos.ts`) — **a Sólides deles não tem isso**
 - [ ] Mini-dashboard de análise de feedbacks (por classificação, colaborador e mês)
 
@@ -77,7 +78,7 @@ Corrigidos em 21/07 (commit `8e090f4`), revisados pelo Codex e os 3 restos fecha
 - [x] Lançamento com período aquisitivo e vencimento calculados automaticamente, com alerta de 30 dias
 - [x] **Venda de dias (abono)** — `dias_abono`, 0 a 10, com trava no banco
 - [x] Exportação CSV (com BOM e `;`, do jeito que o Excel em português abre certo)
-- [ ] **F13** Solicitação pelo próprio colaborador, com aprovação do RH — **depende de login por pessoa**
+- [ ] **F13** Solicitação pelo próprio colaborador, com aprovação do RH — **destravado**: o login por pessoa e o papel `colaborador` já existem, falta a tela e o fluxo de aprovação
 - [ ] **F14** Regras de validação (mínimo 5 dias, não sobrar menos de 5, antecedência de 30) — ⏳ **a Deise ficou de passar a lista completa**
 - [~] **F15** Aviso de férias vencendo: o alerta aparece na tela de férias; o sininho global não existe
 - [ ] Férias coletivas (lançar para vários de uma vez)
@@ -130,7 +131,9 @@ Corrigidos em 21/07 (commit `8e090f4`), revisados pelo Codex e os 3 restos fecha
 - [x] **CI no GitHub Actions** + rodada diária às 07:00 na máquina
 - [x] **Banco migrado do Supabase pro Postgres da VPS** (07/09) — 31 tabelas e 511 linhas conferidas uma a uma
 - [x] **Sistema de volta ao ar com PostgREST próprio** (11/09) — as 68 regras de acesso seguem valendo sem reescrita, e agora requisição sem token é recusada, o que o Supabase não fazia
-- [ ] **Autenticação de verdade, por pessoa** — hoje a trava é uma senha única. É pré-requisito de: férias pelo colaborador (F13), autor automático no feedback (F8b) e qualquer coisa que o colaborador acesse sozinho
+- [x] **Autenticação de verdade, por pessoa** (11/09) — tela de login própria, senha criada por link de uso único no e-mail, sessão de 12h e sair funcionando. A senha única do site foi aposentada, e **o navegador não carrega mais chave nenhuma do banco**: quem autoriza é o token da pessoa
+- [x] **Permissão por papel dentro do banco** (11/09) — as 68 regras `sempre verdadeiro` viraram regras que leem quem está logado. Provado com dois tokens: RH vê 71 colaboradores e 3 candidatos; um colaborador vê 1 e 0, e não consegue editar a ficha de outro
+- [x] **Questionário DISC público virou função de servidor** (11/09) — era a única tela aberta que falava direto com o banco
 
 ---
 
